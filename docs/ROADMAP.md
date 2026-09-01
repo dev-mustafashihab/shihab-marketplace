@@ -8,12 +8,12 @@
 | 4 | Orders + Cart + Checkout | — |
 | 5 | Payments + Commission + Ledger + Payouts | تصميم في PAYMENTS.md |
 | 6 | Reviews + Favorites + Notifications (queue) | — |
-| 7 | Search + Nearby (PostGIS) + Filters | — |
-| 8 | Admin Dashboard | — |
-| 9 | Vendor Dashboard | — |
-| 10 | Flutter Customer App (Riverpod) | — |
-| 11 | Testing شامل + Security + Performance | أساس Phase 1 موجود (unit/e2e) |
-| 12 | Deployment (nginx + CI/CD كامل) | CI مبدئي موجود |
+| 7 | Search + Nearby (PostGIS) + Filters | **منفَّذة ومُختبرة** |
+| 8 | Admin Dashboard (ويب) | **منفَّذة ومُختبرة** |
+| 9 | Vendor Dashboard (موبايل ويب) | **منفَّذة ومُختبرة** |
+| 10 | Flutter Customer App (Riverpod) | **الشاشات الأساسية منفَّذة** |
+| 11 | تفاعل العميل: Auth + تفاصيل بائع + حجز فعلي | **منفَّذ ومُختبر** |
+| 12 | Production Readiness + Final Audit | **تم — بانتظار قرار النشر** |
 
 ## قاعدة الانتقال
 لا يبدأ Module جديد قبل استقرار الحالي: build نظيف + tests خضراء + توثيق محدّث.

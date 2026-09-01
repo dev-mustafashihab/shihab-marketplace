@@ -11,3 +11,11 @@
 | TD-5 | P4 | Dark theme معمّر لكن غير معروض للمستخدم (مفتاح إعدادات لاحقاً) | تحسين | Phase 10 |
 
 ملاحظة إصلاح منفذ: Java 21 بلا jlink يكسر بناء APK — الحل JAVA_HOME=java-17 موثق في DEPLOYMENT.md (ليس ديناً، قرار مثبت).
+
+## إضافات ما بعد Phase 11 (مسجلة حسب البروتوكول §15)
+| ID | الأولوية | البند | المرحلة |
+|---|---|---|---|
+| TD-6 | P3 | GET /vendors/admin/queue و GET /notifications يرجعان tuple [total,rows] بدل envelope meta موحد | Phase 11+ |
+| TD-7 | P3 | flutter analyze فيه 7 infos (prefer_const) — لا errors | مستمر |
+| TD-8 | P4 | فلتر openNow في /search معرف لكن غير مربوط بساعات العمل بعد | Phase 11+ |
+| TD-9 | P4 | دفعات العميل من شاشة البائع تطلب رصيد كامل — لا مبلغ جزئي | لاحقاً |
