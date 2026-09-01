@@ -54,3 +54,27 @@ Base: `/api/v1` — Swagger حي: `/api/docs`.
 ```
 
 قواعد: Versioning بالمسار، DTO + class-validator لكل مدخل، Rate limit عام 60/د (+ أشد على auth)، Idempotency-Key إلزامي على POST المالية.
+
+---
+
+## Phase 2 — Vendors / Categories / Services / Products / Resources / Availability (منفذة)
+
+| Method | Endpoint | Auth | الوصف |
+|---|---|---|---|
+| GET | /categories?includeInactive | عام | تصنيفات نشطة (أو الكل للأدمن عبر `categories:manage`) |
+| POST/PATCH/DELETE | /categories[/:id] | categories:manage | إدارة التصنيفات |
+| GET | /vendors?page&limit&categoryId&q | عام | بحث البائعين **المعتمدين فقط** + pagination |
+| GET | /vendors/:idOrSlug | عام | تفاصيل بائع (uuid أو slug) + خدماته وموارده |
+| GET | /vendors/me/profile | Bearer | متجر البائع الحالي (للداشبورد) |
+| POST | /vendors | Bearer (VENDOR) | إنشاء متجر — واحد لكل مالك، يبدأ PENDING |
+| PATCH | /vendors/:id | Bearer (owner أو ADMIN) | تحديث؛ تغيير status للـ ADMIN فقط (IDOR محمي) |
+| GET | /vendors/admin/queue/:status | vendors:verify | طوابير التوثيق (تستخدم tuple envelope) |
+| GET | /services/public/vendor/:vendorId | عام | خدمات نشطة لبائع |
+| GET/POST | /services/mine، /services | Bearer | خدمات متجر البائع الحالي |
+| PATCH/DELETE | /services/:id | Bearer + ownership | تعديل/حذف خدمة |
+| GET | /products/vendor/:vendorId (عام) + mine/POST/PATCH/DELETE | Bearer | نفس نمط الخدمات |
+| GET/POST/PATCH/DELETE | /resources/mine … | Bearer + ownership | موارد الحجز (VENUE/STAFF/EQUIPMENT/OTHER) |
+| GET | /availability/resource/:resourceId | عام | جدول أسبوعي لمورد |
+| PUT | /availability/resource/:resourceId | Bearer + ownership | استبدال كامل للجدول (ذري، weekday 0-6، دقائق 0-1440) |
+
+**ملاحظة عقد:** `GET /vendors/admin/queue/:status` يرجع tuple `[total, rows]` داخل الـ envelope (بدون meta) — سيُوحَّد في Phase 3 عند لمس الواجهة الأمامية للأدمن.

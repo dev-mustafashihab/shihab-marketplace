@@ -24,6 +24,20 @@ enum UserStatus {
   DELETED
 }
 
+enum VendorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum ResourceType {
+  VENUE
+  STAFF
+  EQUIPMENT
+  OTHER
+}
+
 model User {
   id             String     @id @default(uuid()) @db.Uuid
   email          String     @unique
@@ -39,6 +53,7 @@ model User {
   profile       Profile?
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
+  vendor        Vendor?
 
   @@map("users")
 }
@@ -117,4 +132,121 @@ model AuditLog {
   @@index([actorId])
   @@index([action])
   @@map("audit_logs")
+}
+
+// ===== Phase 2: Marketplace domain =====
+
+model Category {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @db.VarChar(100)
+  nameAr      String  @map("name_ar") @db.VarChar(100)
+  slug        String  @unique @db.VarChar(120)
+  iconKey     String? @map("icon_key") @db.VarChar(50)
+  sortOrder   Int     @default(0) @map("sort_order")
+  isActive    Boolean @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  vendors      Vendor[]
+  services     Service[]
+
+  @@map("categories")
+}
+
+model Vendor {
+  id            String       @id @default(uuid()) @db.Uuid
+  ownerId       String       @unique @map("owner_id") @db.Uuid
+  categoryId    String       @map("category_id") @db.Uuid
+  name          String       @db.VarChar(150)
+  slug          String       @unique @db.VarChar(170)
+  description   String?
+  status        VendorStatus @default(PENDING)
+  rejectionReason String?    @map("rejection_reason") @db.VarChar(255)
+  phone         String?      @db.VarChar(30)
+  address       String?      @db.VarChar(255)
+  latitude      Decimal?     @db.Decimal(9, 6)
+  longitude     Decimal?     @db.Decimal(9, 6)
+  minPrice      Int?         @map("min_price")
+  currency      String       @default("USD") @db.VarChar(3)
+  isOpen        Boolean      @default(true) @map("is_open")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  owner       User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  category    Category         @relation(fields: [categoryId], references: [id])
+  services    Service[]
+  products    Product[]
+  resources   Resource[]
+
+  @@index([categoryId])
+  @@index([status])
+  @@map("vendors")
+}
+
+model Service {
+  id          String  @id @default(uuid()) @db.Uuid
+  vendorId    String  @map("vendor_id") @db.Uuid
+  categoryId  String  @map("category_id") @db.Uuid
+  name        String  @db.VarChar(150)
+  description String?
+  price       Int
+  currency    String  @default("USD") @db.VarChar(3)
+  durationMin Int?    @map("duration_min")
+  isActive    Boolean @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  @@index([vendorId])
+  @@index([categoryId])
+  @@map("services")
+}
+
+model Product {
+  id          String  @id @default(uuid()) @db.Uuid
+  vendorId    String  @map("vendor_id") @db.Uuid
+  name        String  @db.VarChar(150)
+  description String?
+  price       Int
+  currency    String  @default("USD") @db.VarChar(3)
+  stock       Int?
+  isActive    Boolean @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@map("products")
+}
+
+model Resource {
+  id        String       @id @default(uuid()) @db.Uuid
+  vendorId  String       @map("vendor_id") @db.Uuid
+  name      String       @db.VarChar(150)
+  type      ResourceType @default(OTHER)
+  capacity  Int?
+  isActive  Boolean      @default(true) @map("is_active")
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  vendor       Vendor         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  availabilities Availability[]
+
+  @@index([vendorId])
+  @@map("resources")
+}
+
+model Availability {
+  id         String   @id @default(uuid()) @db.Uuid
+  resourceId String   @map("resource_id") @db.Uuid
+  weekday    Int // 0=Sunday .. 6=Saturday
+  startMin   Int      @map("start_min") // minutes from midnight
+  endMin     Int      @map("end_min")
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, weekday, startMin, endMin])
+  @@index([resourceId])
+  @@map("availabilities")
 }

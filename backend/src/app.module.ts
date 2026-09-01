@@ -14,6 +14,12 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { RolesModule } from './modules/roles/roles.module';
+import { CategoriesModule } from './modules/categories/categories.module';
+import { VendorsModule } from './modules/vendors/vendors.module';
+import { ServicesModule } from './modules/services/services.module';
+import { ProductsModule } from './modules/products/products.module';
+import { ResourcesModule } from './modules/resources/resources.module';
+import { AvailabilityModule } from './modules/availability/availability.module';
 
 @Module({
   imports: [
@@ -34,6 +40,12 @@ import { RolesModule } from './modules/roles/roles.module';
     AuthModule,
     UsersModule,
     RolesModule,
+    CategoriesModule,
+    VendorsModule,
+    ServicesModule,
+    ProductsModule,
+    ResourcesModule,
+    AvailabilityModule,
   ],
   controllers: [HealthController],
   providers: [

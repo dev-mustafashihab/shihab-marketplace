@@ -179,6 +179,79 @@ async function main(): Promise<void> {
     });
     console.log(`demo user ensured: ${d.email}`);
   }
+
+  // ===== Phase 2 seed: تصنيفات المنصة =====
+  const categories = [
+    { name: 'Venues', nameAr: 'قاعات ومناسبات', slug: 'venues', iconKey: 'venue', sortOrder: 1 },
+    { name: 'Salons', nameAr: 'صالونات وتجميل', slug: 'salons', iconKey: 'salon', sortOrder: 2 },
+    { name: 'Restaurants', nameAr: 'مطاعم', slug: 'restaurants', iconKey: 'restaurant', sortOrder: 3 },
+    { name: 'Gifts', nameAr: 'هدايا وورد', slug: 'gifts', iconKey: 'gift', sortOrder: 4 },
+    { name: 'Pools', nameAr: 'مسابح وشاليهات', slug: 'pools', iconKey: 'pool', sortOrder: 5 },
+    { name: 'Photography', nameAr: 'تصوير', slug: 'photography', iconKey: 'camera', sortOrder: 6 },
+  ];
+  for (const c of categories) {
+    await prisma.category.upsert({
+      where: { slug: c.slug },
+      update: {},
+      create: c,
+    });
+  }
+  console.log(`categories ensured: ${categories.length}`);
+
+  // متجر تجريبي معتمد للتاجر التجريبي + مورد وجدول توفر
+  const vendorUser = await prisma.user.findUnique({
+    where: { email: 'vendor@marketplace.local' },
+    select: { id: true },
+  });
+  const venues = await prisma.category.findUnique({ where: { slug: 'venues' }, select: { id: true } });
+  if (vendorUser && venues) {
+    const existing = await prisma.vendor.findUnique({
+      where: { ownerId: vendorUser.id },
+      select: { id: true },
+    });
+    if (!existing) {
+      const vendor = await prisma.vendor.create({
+        data: {
+          ownerId: vendorUser.id,
+          categoryId: venues.id,
+          name: 'قصر الأمل للاحتفالات',
+          slug: 'qasr-al-amal',
+          description: 'قاعة أفراح فخمة تتسع لـ 500 ضيف مع خدمة ضيافة',
+          status: 'APPROVED',
+          address: 'دمشق - المزة',
+          latitude: 33.5138,
+          longitude: 36.2765,
+          minPrice: 450,
+        },
+      });
+      const hall = await prisma.resource.create({
+        data: { vendorId: vendor.id, name: 'القاعة الرئيسية', type: 'VENUE', capacity: 500 },
+      });
+      await prisma.resource.create({
+        data: { vendorId: vendor.id, name: 'الحديقة', type: 'VENUE', capacity: 200 },
+      });
+      // السبت والجمعة: 9:00-23:59 (بالدقائق)
+      await prisma.availability.createMany({
+        data: [
+          { resourceId: hall.id, weekday: 5, startMin: 540, endMin: 1439 },
+          { resourceId: hall.id, weekday: 6, startMin: 540, endMin: 1439 },
+        ],
+      });
+      await prisma.service.create({
+        data: {
+          vendorId: vendor.id,
+          categoryId: venues.id,
+          name: 'حجز قاعة كاملة (أمسية)',
+          description: 'من 9 صباحاً حتى منتصف الليل مع كراسي وتجهيزات',
+          price: 450,
+          durationMin: 900,
+        },
+      });
+      console.log('demo vendor ensured: qasr-al-amal (APPROVED)');
+    } else {
+      console.log('demo vendor already present');
+    }
+  }
 }
 
 main()
