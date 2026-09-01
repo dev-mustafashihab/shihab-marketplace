@@ -23,6 +23,9 @@ import { AvailabilityModule } from './modules/availability/availability.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { CartModule } from './modules/cart/cart.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { SettlementsModule } from './modules/settlements/settlements.module';
 
 @Module({
   imports: [
@@ -52,6 +55,9 @@ import { OrdersModule } from './modules/orders/orders.module';
     BookingsModule,
     CartModule,
     OrdersModule,
+    SettingsModule,
+    PaymentsModule,
+    SettlementsModule,
   ],
   controllers: [HealthController],
   providers: [
