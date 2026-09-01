@@ -29,6 +29,7 @@ import { SettlementsModule } from './modules/settlements/settlements.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     ReviewsModule,
     FavoritesModule,
     NotificationsModule,
+    SearchModule,
   ],
   controllers: [HealthController],
   providers: [
