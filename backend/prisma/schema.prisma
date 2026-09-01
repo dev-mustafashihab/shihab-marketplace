@@ -55,6 +55,8 @@ model User {
   auditLogs     AuditLog[]
   vendor        Vendor?
   bookings      Booking[]
+  orders        Order[]
+  cart          Cart?
 
   @@map("users")
 }
@@ -178,6 +180,8 @@ model Vendor {
   products    Product[]
   resources   Resource[]
   bookings    Booking[]
+  orders      Order[]
+  carts       Cart[]
 
   @@index([categoryId])
   @@index([status])
@@ -219,6 +223,8 @@ model Product {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
 
   @@index([vendorId])
   @@map("products")
@@ -326,4 +332,104 @@ model BookingStatusHistory {
 
   @@index([bookingId])
   @@map("booking_status_history")
+}
+
+// ===== Phase 4: Orders / Cart / Checkout =====
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+model Order {
+  id              String      @id @default(uuid()) @db.Uuid
+  orderRef        String      @unique @map("order_ref") @db.VarChar(24)
+  customerId      String      @map("customer_id") @db.Uuid
+  vendorId        String      @map("vendor_id") @db.Uuid
+  status          OrderStatus @default(PENDING)
+  subtotal        Int
+  deliveryFee     Int         @default(0) @map("delivery_fee")
+  discount        Int         @default(0)
+  total           Int
+  currency        String      @default("USD") @db.VarChar(3)
+  addressSnapshot String?     @map("address_snapshot") @db.VarChar(500)
+  phoneSnapshot   String?     @map("phone_snapshot") @db.VarChar(30)
+  note            String?     @db.VarChar(500)
+  clientRequestId String?     @map("client_request_id") @db.VarChar(64)
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  customer       User            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vendor         Vendor          @relation(fields: [vendorId], references: [id])
+  items          OrderItem[]
+  statusHistory  OrderStatusHistory[]
+
+  @@unique([customerId, clientRequestId])
+  @@index([customerId])
+  @@index([vendorId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id       String @id @default(uuid()) @db.Uuid
+  orderId  String @map("order_id") @db.Uuid
+  productId String @map("product_id") @db.Uuid
+  nameSnapshot String @map("name_snapshot") @db.VarChar(150)
+  unitPrice Int    @map("unit_price")
+  quantity  Int
+  lineTotal Int    @map("line_total")
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id         String   @id @default(uuid()) @db.Uuid
+  orderId    String   @map("order_id") @db.Uuid
+  fromStatus String?  @map("from_status") @db.VarChar(30)
+  toStatus   String   @map("to_status") @db.VarChar(30)
+  actorId    String?  @map("actor_id") @db.Uuid
+  reason     String?  @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_status_history")
+}
+
+model Cart {
+  id        String   @id @default(uuid()) @db.Uuid
+  customerId String  @unique @map("customer_id") @db.Uuid
+  vendorId  String   @map("vendor_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  customer User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vendor   Vendor   @relation(fields: [vendorId], references: [id])
+  items    CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String @id @default(uuid()) @db.Uuid
+  cartId    String @map("cart_id") @db.Uuid
+  productId String @map("product_id") @db.Uuid
+  quantity  Int
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId])
+  @@map("cart_items")
 }

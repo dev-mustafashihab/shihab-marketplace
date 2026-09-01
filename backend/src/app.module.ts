@@ -21,6 +21,8 @@ import { ProductsModule } from './modules/products/products.module';
 import { ResourcesModule } from './modules/resources/resources.module';
 import { AvailabilityModule } from './modules/availability/availability.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
+import { CartModule } from './modules/cart/cart.module';
+import { OrdersModule } from './modules/orders/orders.module';
 
 @Module({
   imports: [
@@ -48,6 +50,8 @@ import { BookingsModule } from './modules/bookings/bookings.module';
     ResourcesModule,
     AvailabilityModule,
     BookingsModule,
+    CartModule,
+    OrdersModule,
   ],
   controllers: [HealthController],
   providers: [
