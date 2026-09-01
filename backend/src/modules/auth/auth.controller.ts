@@ -21,8 +21,12 @@ export class AuthController {
   @Public()
   @HttpCode(200)
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto) {
+    const tokens = await this.authService.login(dto);
+    const user = await this.authService.me(
+      (await this.authService.resolveLoginUser(dto)).id,
+    );
+    return { ...tokens, user };
   }
 
   @Public()

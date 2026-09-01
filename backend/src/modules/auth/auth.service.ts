@@ -59,6 +59,19 @@ export class AuthService {
     return this.tokenService.issueTokens(user, meta);
   }
 
+  /** يتحقق من بيانات الدخول ويرجع المستخدم (يُستخدم في login envelope) */
+  async resolveLoginUser(dto: LoginDto) {
+    const bcrypt = await import('bcryptjs');
+    const genericError = new UnauthorizedException('Invalid credentials');
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email.toLowerCase() },
+    });
+    if (!user || user.status !== 'ACTIVE') throw genericError;
+    const valid = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!valid) throw genericError;
+    return user;
+  }
+
   async login(dto: LoginDto, meta?: { ip?: string; userAgent?: string }): Promise<TokenPair> {
     const bcrypt = await import('bcryptjs');
     const genericError = new UnauthorizedException('Invalid credentials');

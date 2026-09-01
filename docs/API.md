@@ -78,3 +78,8 @@ Base: `/api/v1` — Swagger حي: `/api/docs`.
 | PUT | /availability/resource/:resourceId | Bearer + ownership | استبدال كامل للجدول (ذري، weekday 0-6، دقائق 0-1440) |
 
 **ملاحظة عقد:** `GET /vendors/admin/queue/:status` يرجع tuple `[total, rows]` داخل الـ envelope (بدون meta) — سيُوحَّد في Phase 3 عند لمس الواجهة الأمامية للأدمن.
+
+## Phase 8 — Admin Panel (منفذة)
+رابط: /mp-admin/ (static vanilla SPA على نفس الدومين، API تحت /mp-api/)
+شاشات: Login (ADMIN فقط) / Dashboard KPIs / Verification queue (drawer + approve/reject) / Payments (confirm يدوي) / Orders / Settings المالية (نسبة العمولة).
+إصلاح مرافق: POST /auth/login يرجع الآن user داخل الـ envelope بجانب التوكنات (إضافة للخلف آمنة).
