@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_client.dart';
+import '../auth/login_screen.dart';
+import '../vendors/vendor_details_screen.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
@@ -189,7 +191,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s12),
                       itemBuilder: (context, i) {
                         final v = vendors[i];
-                        return Container(
+                        return InkWell(
+                          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => VendorDetailsScreen(idOrSlug: v['slug'] as String? ?? v['id'] as String),
+                          )),
+                          child: Container(
                           padding: const EdgeInsets.all(AppSpacing.s16),
                           decoration: BoxDecoration(
                             color: c.surface,
@@ -221,6 +227,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ],
                             ]),
                           ]),
+                          ),
                         );
                       },
                     );
