@@ -131,8 +131,13 @@ async function main(): Promise<void> {
     console.log(`role ${roleKey}: ${perms.length} permissions ensured`);
   }
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@marketplace.local';
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'Admin@2026';
+  const adminEmail = process.env.SEED_ADMIN_EMAIL;
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!adminEmail || !adminPassword) {
+    throw new Error(
+      'SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be set (see .env.example). No insecure default.',
+    );
+  }
   await prisma.user.upsert({
     where: { email: adminEmail },
     update: {}, // never clobber an existing admin password

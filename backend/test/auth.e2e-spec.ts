@@ -103,8 +103,8 @@ describe('Auth & RBAC (e2e)', () => {
     const adminLogin = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({
-        email: process.env.SEED_ADMIN_EMAIL ?? 'admin@marketplace.local',
-        password: process.env.SEED_ADMIN_PASSWORD ?? 'Admin@2026',
+        email: process.env.SEED_ADMIN_EMAIL,
+        password: process.env.SEED_ADMIN_PASSWORD,
       })
       .expect(200);
     const adminAt = adminLogin.body.data.accessToken as string;

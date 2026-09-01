@@ -32,11 +32,11 @@ npm run start:prod            # http://127.0.0.1:5400/api/v1
 
 | الدور | البريد | كلمة المرور |
 |---|---|---|
-| ADMIN | admin@marketplace.local | Admin@2026 |
+| ADMIN | تُضبط في `backend/.env` عبر `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | (لا يوجد افتراضي — تعمّد Credentials في الكود) |
 | CUSTOMER | customer@marketplace.local | Customer@2026 |
 | VENDOR | vendor@marketplace.local | Vendor@2026 |
 
-> غيّر كلمات المرور قبل أي نشر عام. البذر لا يعدّل حساباً موجوداً.
+> حسابات البذر demo للتجربة المحلية فقط. غيّرها (أو احذفها من seed) قبل أي نشر.
 
 ## الاختبارات
 

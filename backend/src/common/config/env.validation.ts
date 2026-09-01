@@ -18,8 +18,8 @@ export const envValidationSchema = Joi.object({
 
   BCRYPT_ROUNDS: Joi.number().integer().min(4).max(15).default(12),
 
-  SEED_ADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).default('admin@marketplace.local'),
-  SEED_ADMIN_PASSWORD: Joi.string().min(8).default('Admin@2026'),
+  SEED_ADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).required(),
+  SEED_ADMIN_PASSWORD: Joi.string().min(8).required(),
 
   CORS_ORIGINS: Joi.string().default('http://localhost:8080'),
   THROTTLE_TTL: Joi.number().integer().min(1000).default(60000),
