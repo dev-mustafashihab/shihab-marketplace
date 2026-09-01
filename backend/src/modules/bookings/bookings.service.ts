@@ -287,6 +287,27 @@ export class BookingsService {
       throw new ForbiddenException('Not your vendor booking');
     }
     await this.transition(bookingId, booking.status, decision, actor.id, reason);
+    // إشعار للعميل عند تغيير حالة حجزه (لا يعطل العملية إن فشل)
+    const bookingFull = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { customerId: true, bookingRef: true },
+    });
+    if (bookingFull) {
+      const titles: Record<string, string> = {
+        CONFIRMED: 'تم تأكيد حجزك',
+        REJECTED: 'تم رفض حجزك',
+      };
+      await this.prisma.notification.create({
+        data: {
+          userId: bookingFull.customerId,
+          type: `BOOKING_${decision}`,
+          title: titles[decision],
+          body: `الحجز ${bookingFull.bookingRef}`,
+          refType: 'BOOKING',
+          refId: bookingId,
+        },
+      }).catch(() => undefined);
+    }
     return this.prisma.booking.findUnique({ where: { id: bookingId }, select: BOOKING_SELECT });
   }
 

@@ -26,6 +26,9 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { SettlementsModule } from './modules/settlements/settlements.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
+import { FavoritesModule } from './modules/favorites/favorites.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -58,6 +61,9 @@ import { SettlementsModule } from './modules/settlements/settlements.module';
     SettingsModule,
     PaymentsModule,
     SettlementsModule,
+    ReviewsModule,
+    FavoritesModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
   providers: [

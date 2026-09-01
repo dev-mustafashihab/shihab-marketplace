@@ -57,6 +57,9 @@ model User {
   bookings      Booking[]
   orders        Order[]
   cart          Cart?
+  reviews       Review[]
+  favorites     Favorite[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -184,6 +187,8 @@ model Vendor {
   carts       Cart[]
   wallet      Wallet?
   payouts     Payout[]
+  reviews     Review[]
+  favorites   Favorite[]
 
   @@index([categoryId])
   @@index([status])
@@ -299,6 +304,7 @@ model Booking {
   items         BookingItem[]
   statusHistory BookingStatusHistory[]
   payments      Payment[]
+  review        Review?
 
   @@unique([customerId, clientRequestId])
   @@index([customerId])
@@ -373,6 +379,7 @@ model Order {
   items          OrderItem[]
   statusHistory  OrderStatusHistory[]
   payments       Payment[]
+  review         Review?
 
   @@unique([customerId, clientRequestId])
   @@index([customerId])
@@ -536,4 +543,57 @@ model Payment {
   @@index([bookingId])
   @@index([orderId])
   @@map("payments")
+}
+
+// ===== Phase 6: Reviews / Favorites / Notifications =====
+
+model Review {
+  id         String   @id @default(uuid()) @db.Uuid
+  customerId String   @map("customer_id") @db.Uuid
+  vendorId   String   @map("vendor_id") @db.Uuid
+  bookingId  String?  @unique @map("booking_id") @db.Uuid
+  orderId    String?  @unique @map("order_id") @db.Uuid
+  rating     Int
+  comment    String?  @db.VarChar(1000)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  customer User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vendor   Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  booking  Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  order    Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@unique([customerId, bookingId])
+  @@unique([customerId, orderId])
+  @@index([vendorId])
+  @@map("reviews")
+}
+
+model Favorite {
+  id         String   @id @default(uuid()) @db.Uuid
+  customerId String   @map("customer_id") @db.Uuid
+  vendorId   String   @map("vendor_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  customer User   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, vendorId])
+  @@map("favorites")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String    @db.VarChar(50)
+  title     String    @db.VarChar(150)
+  body      String?   @db.VarChar(500)
+  refType   String?   @map("ref_type") @db.VarChar(20)
+  refId     String?   @map("ref_id") @db.Uuid
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
 }
