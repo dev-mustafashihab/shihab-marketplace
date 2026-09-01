@@ -54,6 +54,7 @@ model User {
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
   vendor        Vendor?
+  bookings      Booking[]
 
   @@map("users")
 }
@@ -176,6 +177,7 @@ model Vendor {
   services    Service[]
   products    Product[]
   resources   Resource[]
+  bookings    Booking[]
 
   @@index([categoryId])
   @@index([status])
@@ -197,6 +199,7 @@ model Service {
 
   vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   category    Category @relation(fields: [categoryId], references: [id])
+  bookings    Booking[]
 
   @@index([vendorId])
   @@index([categoryId])
@@ -232,6 +235,7 @@ model Resource {
 
   vendor       Vendor         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   availabilities Availability[]
+  bookings     Booking[]
 
   @@index([vendorId])
   @@map("resources")
@@ -249,4 +253,77 @@ model Availability {
   @@unique([resourceId, weekday, startMin, endMin])
   @@index([resourceId])
   @@map("availabilities")
+}
+
+// ===== Phase 3: Booking Engine =====
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REJECTED
+  COMPLETED
+  EXPIRED
+}
+
+model Booking {
+  id              String        @id @default(uuid()) @db.Uuid
+  bookingRef      String        @unique @map("booking_ref") @db.VarChar(24)
+  customerId      String        @map("customer_id") @db.Uuid
+  vendorId        String        @map("vendor_id") @db.Uuid
+  resourceId      String        @map("resource_id") @db.Uuid
+  serviceId       String?       @map("service_id") @db.Uuid
+  status          BookingStatus @default(PENDING)
+  startsAt        DateTime      @map("starts_at") @db.Timestamptz(3)
+  endsAt          DateTime      @map("ends_at") @db.Timestamptz(3)
+  totalPrice      Int           @map("total_price")
+  currency        String        @default("USD") @db.VarChar(3)
+  customerNote    String?       @map("customer_note") @db.VarChar(500)
+  clientRequestId String?       @map("client_request_id") @db.VarChar(64)
+  expiresAt       DateTime      @map("expires_at") @db.Timestamptz(3)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  customer      User                   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vendor        Vendor                 @relation(fields: [vendorId], references: [id])
+  resource      Resource               @relation(fields: [resourceId], references: [id])
+  service       Service?               @relation(fields: [serviceId], references: [id])
+  items         BookingItem[]
+  statusHistory BookingStatusHistory[]
+
+  @@unique([customerId, clientRequestId])
+  @@index([customerId])
+  @@index([vendorId])
+  @@index([resourceId, startsAt])
+  @@map("bookings")
+}
+
+model BookingItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  bookingId String  @map("booking_id") @db.Uuid
+  kind      String  @db.VarChar(20)
+  refId     String? @map("ref_id") @db.Uuid
+  name      String  @db.VarChar(150)
+  price     Int
+  quantity  Int     @default(1)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@map("booking_items")
+}
+
+model BookingStatusHistory {
+  id         String   @id @default(uuid()) @db.Uuid
+  bookingId  String   @map("booking_id") @db.Uuid
+  fromStatus String?  @map("from_status") @db.VarChar(20)
+  toStatus   String   @map("to_status") @db.VarChar(20)
+  actorId    String?  @map("actor_id") @db.Uuid
+  reason     String?  @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@map("booking_status_history")
 }

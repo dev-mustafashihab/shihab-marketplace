@@ -20,6 +20,7 @@ import { ServicesModule } from './modules/services/services.module';
 import { ProductsModule } from './modules/products/products.module';
 import { ResourcesModule } from './modules/resources/resources.module';
 import { AvailabilityModule } from './modules/availability/availability.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { AvailabilityModule } from './modules/availability/availability.module';
     ProductsModule,
     ResourcesModule,
     AvailabilityModule,
+    BookingsModule,
   ],
   controllers: [HealthController],
   providers: [

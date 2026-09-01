@@ -41,6 +41,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
         }
       }
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      this.logger.error(
+        `Prisma error ${exception.code} on ${request.method} ${request.url}: ${exception.message.slice(0, 300)}`,
+      );
       const mapped = this.mapPrismaError(exception);
       status = mapped.status;
       code = mapped.code;
