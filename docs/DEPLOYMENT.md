@@ -17,3 +17,10 @@ npm run build && npm run start:prod                          # API على 127.0.
 
 ## نشر Flutter (لاحقاً)
 Build على CI، توزيع APK داخلي (أو المتاجر لاحقاً)، توجيه التطبيق إلى `https://<domain>/api/v1`.
+
+## بناء الـ APK (مثبت على هذا السيرفر)
+```bash
+cd frontend
+JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 flutter build apk --debug
+```
+**مهم:** Java 21 المثبتة JRE جزئي (بلا jlink) يكسر Android Gradle Plugin — استخدم Java 17 الكاملة دائماً لأي بناء Flutter.
