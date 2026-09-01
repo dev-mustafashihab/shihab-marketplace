@@ -11,6 +11,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { BookingStatus } from '@prisma/client';
 import { BookingsService } from './bookings.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -63,6 +64,18 @@ export class BookingsController {
     @Query() query: ListBookingsQueryDto,
   ) {
     return this.bookingsService.listMine(user, query.page, query.limit);
+  }
+
+  /** طوابير البائع: حجوزات متجره بفلتر الحالة */
+  @Get('vendor/queue')
+  vendorQueue(
+    @CurrentUser() user: { id: string; role: string },
+    @Query('status') status: BookingStatus | undefined,
+    @Query() query: ListBookingsQueryDto,
+  ) {
+    const valid = status && ['PENDING','CONFIRMED','CANCELLED','REJECTED','COMPLETED','EXPIRED'].includes(status)
+      ? (status as BookingStatus) : undefined;
+    return this.bookingsService.listForVendor(user, valid, query.page, query.limit);
   }
 
   @Get(':id')

@@ -234,6 +234,40 @@ export class BookingsService {
     };
   }
 
+  /** قائمة حجوزات متجر البائع (مع فلتر الحالة) */
+  async listForVendor(actor: Actor, status: BookingStatus | undefined, page = 1, limit = 20) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { ownerId: actor.id },
+      select: { id: true },
+    });
+    if (!vendor && actor.role !== 'ADMIN') {
+      throw new NotFoundException('You have no vendor profile');
+    }
+    const where: Prisma.BookingWhereInput = {
+      ...(vendor && actor.role !== 'ADMIN' ? { vendorId: vendor.id } : {}),
+      ...(status ? { status } : {}),
+    };
+    const [total, data] = await this.prisma.$transaction([
+      this.prisma.booking.count({ where }),
+      this.prisma.booking.findMany({
+        where,
+        select: {
+          ...BOOKING_SELECT,
+          customer: { select: { profile: { select: { firstName: true, lastName: true } } } },
+        },
+        orderBy: { startsAt: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
+    return {
+      success: true as const,
+      data,
+      message: null,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
   async getOne(actor: Actor, bookingId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
