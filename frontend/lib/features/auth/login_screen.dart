@@ -41,12 +41,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       widget.onSuccess?.call();
       Navigator.of(context).pop(true);
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      setState(() => _error = _friendly(e));
     } catch (_) {
       setState(() => _error = 'تعذر الاتصال، تحقق من اتصالك وأعد المحاولة');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// ترجمة أخطاء الخادم لصيغة بشرية عربية.
+  String _friendly(ApiException e) {
+    final m = e.message;
+    if (e.status == 401 || m.contains('Invalid credentials')) return 'البريد أو كلمة المرور غير صحيحة';
+    if (m.contains('temporarily locked')) return 'الحساب مقفل مؤقتاً — حاول بعد قليل';
+    if (e.status == 0 || m.contains('connection')) return 'تعذر الاتصال، تحقق من الإنترنت';
+    return m;
   }
 
   @override

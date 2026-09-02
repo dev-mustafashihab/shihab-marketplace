@@ -117,9 +117,12 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
     );
   }
 
-  /// الاستجابة قد تكون [rows] أو {data:[rows]} حسب التغليف — نتعامل مع الحالتين بأمان.
+  /// الاستجابة قد تكون [total, rows] أو [rows] — بأمان.
   List<Map<String, dynamic>> _rowsOf(dynamic d) {
-    if (d is List) return d.cast<Map<String, dynamic>>();
+    if (d is List) {
+      if (d.length == 2 && d[0] is num && d[1] is List) return (d[1] as List).cast<Map<String, dynamic>>();
+      return d.cast<Map<String, dynamic>>();
+    }
     if (d is Map && d['data'] is List) return (d['data'] as List).cast<Map<String, dynamic>>();
     return const [];
   }

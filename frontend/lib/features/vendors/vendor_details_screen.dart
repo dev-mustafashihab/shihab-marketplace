@@ -161,14 +161,26 @@ class _BookingSheetState extends ConsumerState<BookingSheet> {
       });
       setState(() => _confirmed = data as Map<String, dynamic>? ?? {});
     } on ApiException catch (e) {
-      setState(() => _error = e.status == 409
-          ? 'هذه الفترة حُجزت للتو — جرّب وقتاً آخر'
-          : e.message);
+      setState(() => _error = _friendly(e));
     } catch (_) {
       setState(() => _error = 'تعذر الاتصال، أعد المحاولة');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  /// ترجمة رفض الحجز لرسائل عربية واضحة مع السبب الحقيقي.
+  String _friendly(ApiException e) {
+    final m = e.message;
+    if (m.contains('outside working hours')) {
+      return 'هذا المزود يعمل أيام الجمعة والسبت من 9 صباحاً حتى منتصف الليل — اختر يوماً ضمن أيام العمل';
+    }
+    if (m.contains('already booked')) return 'هذه الفترة محجوزة — جرّب يوماً أو وقتاً آخر';
+    if (m.contains('cross midnight')) return 'الحجز يجب أن ينتهي قبل منتصف الليل';
+    if (m.contains('in the past')) return 'لا يمكن الحجز في تاريخ ماضٍ';
+    if (m.contains('not accepting')) return 'هذا المزود لا يستقبل حجوزات حالياً';
+    if (m.contains('duration')) return 'مدة الحجز غير مناسبة لهذه الخدمة';
+    return m;
   }
 
   @override
@@ -219,6 +231,9 @@ class _BookingSheetState extends ConsumerState<BookingSheet> {
           const SizedBox(height: AppSpacing.s12),
           Text('السعر: \$${widget.service['price']} ${widget.service['currency'] ?? ''}',
               style: AppText.bodyL(c.textPrimary)),
+          const SizedBox(height: AppSpacing.s4),
+          Text('أيام العمل: الجمعة والسبت — 9:00 حتى 24:00',
+              style: AppText.caption(c.textMuted)),
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.s12),
             Text(_error!, style: AppText.bodyM(c.error), textAlign: TextAlign.center),

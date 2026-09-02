@@ -44,7 +44,11 @@ class ApiClient {
       };
 
   Future<dynamic> _run(Future<http.Response> Function() fn) async {
+    // ignore: avoid_print
+    print('API-DEBUG: request start');
     final res = await fn().timeout(const Duration(seconds: 20));
+    // ignore: avoid-print
+    print('API-DEBUG: response ${res.statusCode}');
     if (res.body.isEmpty) throw ApiException('لا يوجد اتصال بالخادم', status: res.statusCode);
     final json = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode >= 400 || json['success'] != true) {

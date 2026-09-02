@@ -23,11 +23,11 @@ class MarketplaceApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: const ProviderScope(child: RootScaffold()),
+      home: const RootScaffold(),
     );
   }
 }
 
 void main() {
-  runApp(const MarketplaceApp());
+  runApp(const ProviderScope(child: MarketplaceApp()));
 }

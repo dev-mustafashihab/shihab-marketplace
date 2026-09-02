@@ -42,13 +42,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       widget.onSuccess?.call();
       Navigator.of(context).pop(true);
     } on ApiException catch (e) {
-      setState(() => _error = e.message == 'Registration failed'
-          ? 'هذا البريد مسجل مسبقاً' : e.message);
+      setState(() => _error = _friendly(e));
     } catch (_) {
       setState(() => _error = 'تعذر الاتصال، أعد المحاولة');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// ترجمة أخطاء الخادم لصيغة بشرية عربية.
+  String _friendly(ApiException e) {
+    final m = e.message;
+    if (m.contains('already')) return 'هذا البريد مسجل مسبقاً — سجّل الدخول';
+    if (m.contains('at least 8')) return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
+    if (m.contains('valid email')) return 'صيغة البريد غير صحيحة';
+    if (m.contains('role')) return 'نوع الحساب غير صالح';
+    return m;
   }
 
   @override

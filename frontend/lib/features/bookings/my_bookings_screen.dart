@@ -35,10 +35,22 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
     _future = api.get('/bookings/mine').catchError((_) => null);
   }
 
+  void _reloadOnToken(String? token) {
+    setState(() {
+      _needLogin = token == null;
+      _load();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    if (_needLogin) {
+    // إعادة الجلب تلقائياً عند تغير التوكن (دخول/خروج)
+    ref.listen<String?>(sessionTokenProvider, (prev, next) {
+      if (prev != next) _reloadOnToken(next);
+    });
+    final tokenNow = ref.watch(sessionTokenProvider);
+    if (_needLogin && tokenNow == null) {
       return Scaffold(backgroundColor: c.background, appBar: AppBar(title: const Text('حجوزاتي')), body: EmptyState(
         icon: Icons.lock_outline,
         title: 'سجّل الدخول لعرض حجوزاتك',

@@ -17,7 +17,8 @@ class OrdersScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
-    final api = ref.read(apiClientProvider);
+    // watch يجعل الشاشة تعاد بناءها فور تغير التوكن (بعد الدخول مباشرة)
+    final api = ref.watch(apiClientProvider);
     if (api.token == null) {
       return Scaffold(backgroundColor: c.background, appBar: AppBar(title: const Text('طلباتي')), body: EmptyState(
         icon: Icons.lock_outline,

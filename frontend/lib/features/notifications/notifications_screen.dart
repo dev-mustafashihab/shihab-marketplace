@@ -32,7 +32,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     _future = api.get('/notifications?limit=50').catchError((_) => 'ERR');
     if (api.token != null) {
       api.get('/notifications/unread-count').then((d) {
-        final n = d is Map ? (d['unreadCount'] ?? d['count'] ?? 0) : 0;
+        // قد يكون رقم مباشر أو {unreadCount}
+        final n = d is num ? d : (d is Map ? (d['unreadCount'] ?? d['count'] ?? 0) : 0);
         if (mounted) setState(() => _unread = (n as num).toInt());
       }).catchError((_) {});
     }
@@ -95,7 +96,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s8),
               itemBuilder: (context, i) {
                 final n = rows[i];
-                final read = n['isRead'] == true;
+                final read = n['readAt'] != null;
                 return InkWell(
                   onTap: read ? null : () => _markRead(n['id'] as String),
                   child: Container(
