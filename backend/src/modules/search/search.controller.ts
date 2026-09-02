@@ -46,6 +46,8 @@ export class SearchController {
       lng: query.lng,
       radiusKm: query.radiusKm,
       capacity: query.capacity,
+      minRating: query.minRating,
+      openNow: query.openNow,
       page: query.page ?? 1,
       limit: query.limit ?? 20,
     });

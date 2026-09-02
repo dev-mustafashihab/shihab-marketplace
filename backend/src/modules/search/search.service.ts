@@ -64,6 +64,9 @@ export class SearchService {
       conditions.push(`EXISTS (SELECT 1 FROM resources r WHERE r.vendor_id = v.id AND r.is_active AND r.capacity >= ${bind(f.capacity)})`);
     }
     // PHASE 11: openNow = مفتاح البائع مفعّل + توجد الآن نافذة عمل بتوقيت البائع المحلي
+    if (f.minRating !== undefined) {
+      conditions.push(`COALESCE(rr.average_rating, 0) >= ${bind(f.minRating)}`);
+    }
     if (f.openNow === true) {
       conditions.push(`v.is_open = TRUE AND EXISTS (
         SELECT 1 FROM resources r
