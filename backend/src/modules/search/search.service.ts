@@ -25,6 +25,7 @@ interface VendorSearchRow {
   min_price: number | null;
   currency: string;
   is_open: boolean;
+  image_url: string | null;
   category_name_ar: string;
   average_rating: string | number | null;
   reviews_count: bigint | number;
@@ -82,6 +83,7 @@ export class SearchService {
 
     const rowsRes = await this.prisma.$queryRawUnsafe<VendorSearchRow[]>(
       `SELECT v.id, v.name, v.slug, v.description, v.address, v.min_price, v.currency, v.is_open,
+              v.image_url AS image_url,
               c.name_ar AS category_name_ar,
               COALESCE(rr.average_rating, 0) AS average_rating,
               COALESCE(rr.reviews_count, 0) AS reviews_count
@@ -110,6 +112,7 @@ export class SearchService {
       minPrice: r.min_price,
       currency: r.currency,
       isOpen: r.is_open,
+      imageUrl: r.image_url,
       category: r.category_name_ar,
       averageRating: Number(r.average_rating ?? 0),
       reviewsCount: Number(r.reviews_count ?? 0),

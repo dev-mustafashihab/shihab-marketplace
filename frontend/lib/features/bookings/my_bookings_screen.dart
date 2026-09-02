@@ -30,9 +30,9 @@ class MyBookingsScreen extends ConsumerWidget {
 
     if (token == null) {
       return Scaffold(backgroundColor: c.background, appBar: AppBar(title: const Text('حجوزاتي')), body: EmptyState(
-        icon: Icons.lock_outline,
-        title: 'سجّل الدخول لعرض حجوزاتك',
-        message: 'بعد تسجيل الدخول ستظهر كل حجوزاتك القادمة والسابقة هنا.',
+        icon: Icons.calendar_month_rounded,
+        title: 'حجوزاتك القادمة',
+        message: 'سجّل دخولك لتتابع حجوزاتك القادمة والسابقة.',
         actionLabel: 'تسجيل الدخول',
         onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen())),
       ));

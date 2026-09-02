@@ -29,9 +29,9 @@ class OrdersScreen extends ConsumerWidget {
 
     if (token == null) {
       return Scaffold(backgroundColor: c.background, appBar: AppBar(title: const Text('طلباتي')), body: EmptyState(
-        icon: Icons.lock_outline,
-        title: 'سجّل الدخول لعرض طلباتك',
-        message: 'ستجد هنا طلبات المطاعم والهدايا مع حالة التوصيل لحظة بلحظة.',
+        icon: Icons.receipt_long_rounded,
+        title: 'طلباتك',
+        message: 'تتبع طلبات المطاعم والهدايا لحظة بلحظة بعد تسجيل الدخول.',
         actionLabel: 'تسجيل الدخول',
         onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen())),
       ));
