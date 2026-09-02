@@ -40,6 +40,16 @@ export class ApiExceptionFilter implements ExceptionFilter {
           errors = body.errors as { field?: string; message: string }[];
         }
       }
+    } else if (exception instanceof Prisma.PrismaClientUnknownRequestError) {
+      // PHASE 19: أخطاء قيود Postgres الخاصة (exclusion) → 409 بدل 500
+      const msg = exception.message ?? '';
+      if (msg.includes('no_double_booking')) {
+        status = HttpStatus.CONFLICT;
+        code = 'SLOT_TAKEN';
+        message = 'This period was just booked';
+      } else {
+        this.logger.error(`Unhandled DB exception on ${request.method} ${request.url}: ${msg.slice(0, 200)}`);
+      }
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       this.logger.error(
         `Prisma error ${exception.code} on ${request.method} ${request.url}: ${exception.message.slice(0, 300)}`,

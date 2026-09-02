@@ -58,9 +58,23 @@ export class SearchService {
     }
     if (f.maxPrice !== undefined) {
       conditions.push(`COALESCE(v.min_price, 0) <= ${bind(f.maxPrice)}`);
+
     }
     if (f.capacity !== undefined) {
       conditions.push(`EXISTS (SELECT 1 FROM resources r WHERE r.vendor_id = v.id AND r.is_active AND r.capacity >= ${bind(f.capacity)})`);
+    }
+    // PHASE 11: openNow = مفتاح البائع مفعّل + توجد الآن نافذة عمل بتوقيت البائع المحلي
+    if (f.openNow === true) {
+      conditions.push(`v.is_open = TRUE AND EXISTS (
+        SELECT 1 FROM resources r
+        JOIN availabilities a ON a.resource_id = r.id
+        WHERE r.vendor_id = v.id AND r.is_active
+          AND a.weekday = EXTRACT(DOW FROM (now() AT TIME ZONE v.timezone))::int
+          AND a.start_min <= EXTRACT(HOUR FROM (now() AT TIME ZONE v.timezone)) * 60
+                                   + EXTRACT(MINUTE FROM (now() AT TIME ZONE v.timezone))::int
+          AND a.end_min   >= EXTRACT(HOUR FROM (now() AT TIME ZONE v.timezone)) * 60
+                                   + EXTRACT(MINUTE FROM (now() AT TIME ZONE v.timezone))::int
+      )`);
     }
     if (f.radiusKm !== undefined && f.lat !== undefined && f.lng !== undefined) {
       conditions.push(`v.location IS NOT NULL AND ST_DWithin(v.location, ST_SetSRID(ST_MakePoint(${bind(f.lng)}, ${bind(f.lat)}), 4326)::geography, ${bind(f.radiusKm * 1000)})`);

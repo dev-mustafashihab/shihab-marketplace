@@ -177,6 +177,7 @@ model Media {
 }
 
 model Vendor {
+  timezone  String @default("Asia/Damascus") @db.VarChar(64)
   id            String       @id @default(uuid()) @db.Uuid
   ownerId       String       @unique @map("owner_id") @db.Uuid
   categoryId    String       @map("category_id") @db.Uuid
@@ -526,6 +527,8 @@ model WalletTransaction {
   wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
   @@index([walletId])
+  // PHASE 3: منع تكرار الحدث المالي — نفس النوع+المرجع+العملة مرة واحدة فقط
+  @@unique([type, refType, refId, currency])
   @@map("wallet_transactions")
 }
 

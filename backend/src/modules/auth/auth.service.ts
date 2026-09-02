@@ -93,14 +93,17 @@ export class AuthService {
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) {
-      const failedAttempts = user.failedAttempts + 1;
-      const lockedUntil =
-        failedAttempts >= MAX_FAILED_ATTEMPTS
+      // PHASE 13: زيادة ذرية — فشلان متزامنان = +2 لا +1 (لا قراءة-ثم-كتابة)
+      const willLock = user.failedAttempts + 1 >= MAX_FAILED_ATTEMPTS;
+      const lockedUntil = willLock
           ? new Date(Date.now() + LOCK_MINUTES * 60 * 1000)
           : null;
       await this.prisma.user.update({
         where: { id: user.id },
-        data: { failedAttempts, lockedUntil },
+        data: {
+          failedAttempts: { increment: 1 },
+          lockedUntil,
+        },
       });
       throw genericError;
     }

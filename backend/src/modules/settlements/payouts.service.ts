@@ -21,19 +21,24 @@ export class PayoutsService {
     return vendor.id;
   }
 
+  /** PHASE 6: طلب سحب — داخل tx مع قفل المحفظة؛ الفهرس الجزئي يمنع التكرار المتزامن نهائياً */
   async requestPayout(actor: Actor, amount: number, note?: string) {
     const vendorId = await this.ownedVendorId(actor);
-    const balance = (await this.wallets.getBalance(vendorId))?.balance ?? 0;
-    if (amount > balance) {
-      throw new ConflictException(`Requested amount exceeds balance (${balance})`);
-    }
-    // طلب واحد معلق في نفس الوقت
-    const pending = await this.prisma.payout.findFirst({
-      where: { vendorId, status: PayoutStatus.REQUESTED },
-      select: { id: true },
+    return this.prisma.$transaction(async (tx) => {
+      // قفل محفظة البائع — يمنع سباق سحب متوازٍ أو دفعة متزامنة
+      await tx.$queryRaw`SELECT id FROM wallets WHERE vendor_id = ${vendorId}::uuid FOR UPDATE`;
+      const balance = (await this.wallets.getBalance(vendorId))?.balance ?? 0;
+      if (amount > balance) {
+        throw new ConflictException(`Requested amount exceeds balance (${balance})`);
+      }
+      // طلب نشط واحد (REQUESTED/APPROVED) — مطابق لشرط الفهرس الجزئي
+      const active = await tx.payout.findFirst({
+        where: { vendorId, status: { in: [PayoutStatus.REQUESTED, PayoutStatus.APPROVED] } },
+        select: { id: true },
+      });
+      if (active) throw new ConflictException('You already have an active payout request');
+      return tx.payout.create({ data: { vendorId, amount, note } });
     });
-    if (pending) throw new ConflictException('You already have a pending payout request');
-    return this.prisma.payout.create({ data: { vendorId, amount, note } });
   }
 
   async listForVendor(actor: Actor, page = 1, limit = 20) {

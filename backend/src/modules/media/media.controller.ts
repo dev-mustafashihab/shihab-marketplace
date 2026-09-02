@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Post,
   Get,
@@ -36,7 +37,8 @@ export class MediaController {
     FileInterceptor('file', {
       storage: diskStorage({
         destination: UPLOAD_DIR,
-        filename: (_req, file, cb) => cb(null, `${randomUUID()}${extname(file.originalname)}`),
+        // PHASE 9: اسم من الخادم فقط + امتداد ثابت يُصحح لاحقاً حسب magic bytes
+        filename: (_req, file, cb) => cb(null, randomUUID()),
       }),
       limits: { fileSize: MAX_BYTES },
     }),
@@ -51,30 +53,50 @@ export class MediaController {
   })
   async upload(
     @CurrentUser() user: { id: string; role: string },
+    @Body() body: { vendorId?: string },
     @UploadedFile() file?: Express.Multer.File,
   ) {
     if (!file) throw new NotFoundException('file is required');
-    if (!ALLOWED.has(file.mimetype)) throw new UnsupportedMediaTypeException('Only jpeg/png/webp allowed');
     if (file.size > MAX_BYTES) throw new PayloadTooLargeException('Max 5MB');
 
-    const vendorId = (file as unknown as { vendorId?: string }).vendorId;
+    // PHASE 9: تحقق magic bytes — لا نثق في mimetype القادم من العميل
+    const kind = this.detectImageKind(file.buffer);
+    if (!kind) throw new UnsupportedMediaTypeException('Only real jpeg/png/webp images are allowed');
+
+    // PHASE 8: vendorId من multipart body (نص الحقل) — ليس من كائن الملف
+    const vendorId = body?.vendorId && /^[0-9a-f-]{36}$/i.test(body.vendorId) ? body.vendorId : undefined;
+
     if (vendorId) {
       const vendor = await this.prisma.vendor.findUnique({ where: { id: vendorId }, select: { ownerId: true } });
       if (!vendor) throw new NotFoundException('Vendor not found');
       if (vendor.ownerId !== user.id && user.role !== 'ADMIN') throw new ForbiddenException();
     }
 
+    // امتداد موثوق من المحتوى الموثّق — يمنع double-extension وملفات تنفيذية
+    const safeName = `${file.filename}.${kind.ext}`;
+
     const media = await this.prisma.media.create({
       data: {
         ownerId: user.id,
         vendorId: vendorId ?? null,
-        filePath: file.filename,
-        mimeType: file.mimetype,
+        filePath: safeName,
+        mimeType: kind.mime,
         sizeBytes: file.size,
       },
       select: { id: true, filePath: true, mimeType: true, sizeBytes: true, createdAt: true },
     });
     return { ...media, url: `/mp-media/${media.filePath}` };
+  }
+
+  private detectImageKind(buf: Buffer): { mime: string; ext: string } | null {
+    if (!buf || buf.length < 12) return null;
+    // JPEG: FF D8 FF
+    if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return { mime: 'image/jpeg', ext: 'jpg' };
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return { mime: 'image/png', ext: 'png' };
+    // WEBP: RIFF....WEBP
+    if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') return { mime: 'image/webp', ext: 'webp' };
+    return null;
   }
 
   /** وسائط متجر — عام للمعتمدين. */

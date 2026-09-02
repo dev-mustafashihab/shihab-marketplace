@@ -92,7 +92,8 @@ describe('AuthService (unit)', () => {
       ).rejects.toThrow(UnauthorizedException);
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'u-1' },
-        data: { failedAttempts: 5, lockedUntil: expect.any(Date) },
+        // PHASE 13: الزيادة أصبحت ذرية increment — والقفل يُحسب من الحالة المقروءة
+        data: { failedAttempts: { increment: 1 }, lockedUntil: expect.any(Date) },
       });
 
       await expect(

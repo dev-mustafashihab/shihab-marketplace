@@ -77,12 +77,21 @@ export class OrdersService {
       for (const item of cart.items) {
         const p = item.product;
         if (!p.isActive) throw new ConflictException(`Product no longer available: ${p.name}`);
-        if (p.stock !== null && p.stock < item.quantity) {
-          throw new ConflictException(`Insufficient stock for: ${p.name}`);
-        }
         subtotal += p.price * item.quantity;
       }
       const total = subtotal; // deliveryFee/discount تُحسب هنا لاحقاً حسب سياسات البائع
+
+      // PHASE 4 FIX: خصم مخزون ذري (يمنع البيع الزائد والسالب) — قبل إنشاء الطلب
+      for (const item of cart.items) {
+        if (item.product.stock !== null) {
+          const res = await tx.$executeRaw`
+            UPDATE products SET stock = stock - ${item.quantity}
+            WHERE id = ${item.productId}::uuid AND stock >= ${item.quantity}`;
+          if (res === 0) {
+            throw new ConflictException(`Insufficient stock for: ${item.product.name}`);
+          }
+        }
+      }
 
       const order = await tx.order.create({
         data: {
@@ -110,16 +119,6 @@ export class OrdersService {
         select: ORDER_SELECT,
       });
 
-      // خصم المخزون (منتجات بمخزون محدود فقط)
-      for (const i of cart.items) {
-        if (i.product.stock !== null) {
-          await tx.product.update({
-            where: { id: i.productId },
-            data: { stock: { decrement: i.quantity } },
-          });
-        }
-      }
-
       await tx.orderStatusHistory.create({
         data: { orderId: order.id, fromStatus: null, toStatus: OrderStatus.PENDING, actorId: actor.id, reason: 'CHECKOUT' },
       });
@@ -128,6 +127,15 @@ export class OrdersService {
       await tx.cart.delete({ where: { id: cart.id } });
 
       return order;
+    }).catch((e) => {
+      // PHASE 5: تكرار clientRequestId متزامن → أعِد الطلب الموجود بدل 500
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        return this.prisma.order.findUnique({
+          where: { customerId_clientRequestId: { customerId: actor.id, clientRequestId: dto.clientRequestId! } },
+          select: ORDER_SELECT,
+        });
+      }
+      throw e;
     });
   }
 

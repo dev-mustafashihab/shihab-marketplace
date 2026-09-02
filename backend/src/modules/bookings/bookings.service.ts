@@ -121,13 +121,34 @@ export class BookingsService {
           // (1) قفل صف المورد — كل المحاولات المتزامنة على نفس المورد تتصفّف هنا
           await tx.$queryRaw`SELECT id FROM "resources" WHERE id = ${dto.resourceId}::uuid FOR UPDATE`;
 
-          // (2) فحص توفر اليوم/الوقت داخل نوافذ الجدول الأسبوعي
+          // (2) فحص توفر اليوم/الوقت — بتوقيت البائع المحلي (PHASE 10) وليس UTC
+          const vendor = await tx.vendor.findUnique({
+            where: { id: dto.vendorId },
+            select: { timezone: true },
+          });
+          const tz = vendor?.timezone ?? 'UTC';
+          const fmt = (d: Date) => {
+            const p = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12: false, weekday: 'short', hour: '2-digit', minute: '2-digit' });
+            const parts = Object.fromEntries(p.formatToParts(d).map((x) => [x.type, x.value]));
+            const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.weekday);
+            let h = parseInt(parts.hour, 10);
+            if (h === 24) h = 0;
+            return { weekday: wd, minutes: h * 60 + parseInt(parts.minute, 10) };
+          };
           const start = dto.startsAt;
-          const weekday = start.getUTCDay();
-          const startMin = start.getUTCHours() * 60 + start.getUTCMinutes();
+          const sLocal = fmt(start);
           const end = dto.endsAt;
-          const endMin = end.getUTCHours() * 60 + end.getUTCMinutes();
-          if (end.getUTCDate() !== start.getUTCDate()) {
+          const eLocal = fmt(end);
+          const weekday = sLocal.weekday;
+          const startMin = sLocal.minutes;
+          const endMin = eLocal.minutes;
+          // منتصف الليل بتوقيت البائع: تغيّر اليوم المحلي بين البداية والنهاية
+          const dayIndex = (d: Date) => {
+            // رقم اليوم بتوقيت البائع: نزع الإزاحة ثم قسّم
+            const off = new Date(d.toLocaleString('en-US', { timeZone: tz })).getTime() - new Date(d.toLocaleString('en-US', { timeZone: 'UTC' })).getTime();
+            return Math.floor((d.getTime() + off) / 86400000);
+          };
+          if (dayIndex(start) !== dayIndex(end)) {
             throw new ConflictException('Booking must not cross midnight');
           }
           const windowCount = await tx.availability.count({

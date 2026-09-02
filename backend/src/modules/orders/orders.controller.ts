@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -78,12 +78,13 @@ export class OrdersController {
     @Param('to') to: string,
     @Body() dto: TransitionDto,
   ) {
+    // PHASE 7 FIX: حالة غير معروفة = 400 — يُمنع أي fallback إلى CANCELLED
     const valid: Record<string, boolean> = {
       CONFIRMED: true, PREPARING: true, READY: true,
       OUT_FOR_DELIVERY: true, DELIVERED: true, REFUNDED: true,
     };
     if (!valid[to]) {
-      return this.ordersService.transition(user, id, 'CANCELLED' as OrderStatus, 'INVALID_TRANSITION');
+      throw new BadRequestException(`Invalid order status: ${to}`);
     }
     return this.ordersService.transition(user, id, to as OrderStatus, dto.reason);
   }
