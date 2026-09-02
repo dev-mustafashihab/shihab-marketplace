@@ -9,6 +9,7 @@ import '../../core/widgets/error_state.dart';
 import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/status_badge.dart' show BookingStatus, StatusBadge;
 import '../../core/network/api_client.dart';
+import '../auth/login_screen.dart';
 
 /// حجوزاتي — قائمة حجوزات العميل بالحالة (tab الحجوزات في الشل).
 class MyBookingsScreen extends ConsumerStatefulWidget {
@@ -43,6 +44,7 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
         title: 'سجّل الدخول لعرض حجوزاتك',
         message: 'بعد تسجيل الدخول ستظهر كل حجوزاتك القادمة والسابقة هنا.',
         actionLabel: 'تسجيل الدخول',
+        onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen())),
       ));
     }
     return Scaffold(
@@ -60,7 +62,7 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
           if (snap.hasError || snap.data == null) {
             return ErrorState(message: 'تعذر تحميل الحجوزات', onRetry: () { setState(_load); });
           }
-          final rows = (snap.data['data'] as List? ?? []).cast<Map<String, dynamic>>();
+          final rows = _rowsOf(snap.data);
           if (rows.isEmpty) {
             return EmptyState(
               icon: Icons.event_busy_outlined,
@@ -99,6 +101,13 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
         },
       ),
     );
+  }
+
+  /// الاستجابة قد تكون [rows] أو {data:[rows]} — نتعامل مع الحالتين.
+  static List<Map<String, dynamic>> _rowsOf(dynamic d) {
+    if (d is List) return d.cast<Map<String, dynamic>>();
+    if (d is Map && d['data'] is List) return (d['data'] as List).cast<Map<String, dynamic>>();
+    return const [];
   }
 
   static String fmtDate(String iso) {

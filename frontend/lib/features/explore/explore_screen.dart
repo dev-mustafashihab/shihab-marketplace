@@ -11,7 +11,8 @@ import '../../core/network/api_client.dart';
 
 /// استكشف — بحث نصي حي + فلاتر أساسية (سعر/تقييم) فوق /search.
 class ExploreScreen extends ConsumerStatefulWidget {
-  const ExploreScreen({super.key});
+  const ExploreScreen({super.key, this.categoryId});
+  final String? categoryId;
 
   @override
   ConsumerState<ExploreScreen> createState() => _ExploreScreenState();
@@ -47,6 +48,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       'limit': '30',
       if (_query.isNotEmpty) 'q': _query,
       if (_maxPrice != null) 'maxPrice': _maxPrice!.round().toString(),
+      if (widget.categoryId != null) 'categoryId': widget.categoryId!,
     };
 
     return Scaffold(
@@ -81,8 +83,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         Expanded(
           child: FutureBuilder<List<dynamic>>(
             future: api.get('/search', query: query).then((d) {
-              final raw = d['data'];
-              return (raw as List).cast<dynamic>();
+              if (d is List) return d.cast<dynamic>();
+              if (d is Map && d['data'] is List) return (d['data'] as List).cast<dynamic>();
+              return const <dynamic>[];
             }),
             builder: (context, snap) {
               if (snap.connectionState != ConnectionState.done) {

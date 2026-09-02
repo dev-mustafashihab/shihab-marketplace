@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_client.dart';
-import '../auth/login_screen.dart';
+import '../notifications/notifications_screen.dart';
 import '../vendors/vendor_details_screen.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -57,8 +57,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     final api = ref.read(apiClientProvider);
     _future = api.get('/vendors?limit=10').then((d) {
-      final raw = d['data'];
-      return (raw as List).cast<Map<String, dynamic>>();
+      // d هو data مباشرة (ApiClient يفتح الـ envelope)
+      if (d is List) return d.cast<Map<String, dynamic>>();
+      if (d is Map && d['data'] is List) return (d['data'] as List).cast<Map<String, dynamic>>();
+      return const <Map<String, dynamic>>[];
     });
     _cats = api.get('/categories').then((d) => (d as List).cast<Map<String, dynamic>>());
   }
@@ -86,11 +88,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           maxLines: 1, overflow: TextOverflow.ellipsis)),
                       Icon(Icons.keyboard_arrow_down, size: 20, color: c.textMuted),
                       const Spacer(),
-                      Icon(Icons.notifications_none, size: 26, color: c.textPrimary),
+                      InkWell(
+                        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsScreen())),
+                        child: Icon(Icons.notifications_none, size: 26, color: c.textPrimary),
+                      ),
                     ]),
                   ),
                   const SizedBox(height: AppSpacing.s12),
-                  Container(
+                  InkWell(
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const ExploreScreen(),
+                    )),
+                    child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
                     height: 52,
@@ -104,6 +113,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const SizedBox(width: AppSpacing.s12),
                       Text('ابحث عن خدمة...', style: AppText.bodyM(c.textMuted)),
                     ]),
+                  ),
                   ),
                   const SizedBox(height: AppSpacing.s24),
                   Padding(

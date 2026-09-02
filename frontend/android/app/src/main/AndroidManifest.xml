@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for API calls in release builds (debug adds it automatically) -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="marketplace_app"
+        android:label="سوق المناسبات"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

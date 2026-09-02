@@ -7,7 +7,6 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/skeleton_loader.dart';
-import '../../core/widgets/app_button.dart';
 
 /// صفحة البائع (من البحث) + CTA حجز → BookingSheet.
 class VendorDetailsScreen extends ConsumerStatefulWidget {

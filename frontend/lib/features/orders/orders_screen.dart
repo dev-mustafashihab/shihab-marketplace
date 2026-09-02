@@ -8,6 +8,7 @@ import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/skeleton_loader.dart';
 import '../../core/network/api_client.dart';
+import '../auth/login_screen.dart';
 
 /// طلباتي — Timeline بصري لحالة الطلب (design: OrderTimeline).
 class OrdersScreen extends ConsumerWidget {
@@ -23,6 +24,7 @@ class OrdersScreen extends ConsumerWidget {
         title: 'سجّل الدخول لعرض طلباتك',
         message: 'ستجد هنا طلبات المطاعم والهدايا مع حالة التوصيل لحظة بلحظة.',
         actionLabel: 'تسجيل الدخول',
+        onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen())),
       ));
     }
     return Scaffold(
@@ -40,7 +42,7 @@ class OrdersScreen extends ConsumerWidget {
           if (snap.hasError || snap.data == null) {
             return ErrorState(message: 'تعذر تحميل الطلبات', onRetry: () => ref.invalidate(apiClientProvider));
           }
-          final rows = (snap.data['data'] as List? ?? []).cast<Map<String, dynamic>>();
+          final rows = _rowsOf(snap.data);
           if (rows.isEmpty) {
             return EmptyState(
               icon: Icons.receipt_long_outlined,
@@ -75,6 +77,13 @@ class OrdersScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  /// الاستجابة قد تكون [rows] أو {data:[rows]} — نتعامل مع الحالتين.
+  static List<Map<String, dynamic>> _rowsOf(dynamic d) {
+    if (d is List) return d.cast<Map<String, dynamic>>();
+    if (d is Map && d['data'] is List) return (d['data'] as List).cast<Map<String, dynamic>>();
+    return const [];
   }
 
   static String _statusAr(String s) => switch (s) {
