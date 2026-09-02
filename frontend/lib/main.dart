@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'core/session/session_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/shell/root_scaffold.dart';
 
@@ -28,6 +29,12 @@ class MarketplaceApp extends StatelessWidget {
   }
 }
 
-void main() {
-  runApp(const ProviderScope(child: MarketplaceApp()));
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final container = ProviderContainer();
+  await SessionService.restore(container);
+  runApp(UncontrolledProviderScope(
+    container: container,
+    child: const MarketplaceApp(),
+  ));
 }

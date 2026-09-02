@@ -7,7 +7,11 @@ import '../../core/theme/app_typography.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/skeleton_loader.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/network/api_client.dart';
+import '../vendors/vendor_details_screen.dart';
+import '../../core/session/session_service.dart';
+import '../location/location_picker.dart';
 
 /// استكشف — بحث نصي حي + فلاتر أساسية (سعر/تقييم) فوق /search.
 class ExploreScreen extends ConsumerStatefulWidget {
@@ -57,13 +61,42 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       body: Column(children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-          child: TextField(
-            controller: _controller,
-            decoration: InputDecoration(
-              hintText: 'ابحث عن قاعة، صالون، مطعم…',
-              prefixIcon: Icon(Icons.search, color: c.textMuted),
+          child: Row(children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: 'ابحث عن قاعة، صالون، مطعم…',
+                  prefixIcon: Icon(Icons.search_rounded, color: c.primary),
+                  filled: true,
+                  fillColor: c.surface,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: c.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: c.primary, width: 1.4),
+                  ),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: AppSpacing.s8),
+            // زر الموقع السريع
+            InkWell(
+              onTap: () => showLocationPicker(context, ref),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                width: 48, height: 48,
+                decoration: BoxDecoration(
+                  color: c.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(Icons.location_on_rounded, color: c.primary, size: 22),
+              ),
+            ),
+          ]),
         ),
         const SizedBox(height: AppSpacing.s12),
         SizedBox(
@@ -108,28 +141,69 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 );
               }
               return ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH, vertical: AppSpacing.s8),
                 itemCount: rows.length,
                 separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s12),
                 itemBuilder: (context, i) {
                   final v = rows[i];
-                  return Container(
-                    padding: const EdgeInsets.all(AppSpacing.s16),
-                    decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: c.border)),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        Expanded(child: Text(v['name'], style: AppText.headingS(c.textPrimary),
-                            maxLines: 1, overflow: TextOverflow.ellipsis)),
-                        if (v['averageRating'] != null && (v['averageRating'] as num) > 0) ...[
-                          Icon(Icons.star, size: 15, color: c.accent),
-                          Text(' ${v['averageRating']}', style: AppText.caption(c.textSecondary)),
-                        ],
+                  return InkWell(
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => VendorDetailsScreen(idOrSlug: (v['slug'] ?? v['id'] ?? '') as String),
+                    )),
+                    child: Container(
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: c.border)),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        if (v['imageUrl'] != null)
+                          CachedNetworkImage(
+                            imageUrl: 'https://panel.fahd-car.cloud${v['imageUrl']}',
+                            height: 110, width: double.infinity, fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(height: 110, color: c.primary.withOpacity(0.06)),
+                            errorWidget: (_, __, ___) => Container(height: 110, color: c.primary.withOpacity(0.06)),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.all(AppSpacing.s12),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Row(children: [
+                              Expanded(child: Text(v['name'], style: AppText.headingS(c.textPrimary),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis)),
+                              if (v['averageRating'] != null && (v['averageRating'] as num) > 0) ...[
+                                Icon(Icons.star_rounded, size: 16, color: c.accent),
+                                Text(' ${v['averageRating']}', style: AppText.caption(c.textSecondary)),
+                              ],
+                            ]),
+                            const SizedBox(height: AppSpacing.s4),
+                            Row(children: [
+                              Flexible(child: Text('${v['category'] ?? ''}${v['address'] != null ? ' • ${v['address']}' : ''}',
+                                  style: AppText.caption(c.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                              // المسافة
+                              Builder(builder: (context) {
+                                final me = ref.watch(userLocationProvider);
+                                final vLat = v['latitude'];
+                                final vLng = v['longitude'];
+                                if (me == null || vLat == null || vLng == null) return const SizedBox.shrink();
+                                final dist = distanceKm(me.lat, me.lng,
+                                    double.parse(vLat.toString()), double.parse(vLng.toString()));
+                                return Container(
+                                  margin: const EdgeInsets.only(right: 6),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: c.primary.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                    Icon(Icons.near_me_rounded, size: 11, color: c.primary),
+                                    const SizedBox(width: 2),
+                                    Text(dist, style: AppText.caption(c.primary)),
+                                  ]),
+                                );
+                              }),
+                            ]),
+                          ]),
+                        ),
                       ]),
-                      const SizedBox(height: AppSpacing.s8),
-                      Text('${v['category'] ?? ''}${v['address'] != null ? ' • ${v['address']}' : ''}',
-                          style: AppText.caption(c.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ]),
+                    ),
                   );
                 },
               );

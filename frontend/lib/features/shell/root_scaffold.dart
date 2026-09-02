@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/network/api_client.dart';
+import '../../core/session/session_service.dart';
+import '../location/location_picker.dart';
 import '../notifications/notifications_screen.dart';
 import '../vendors/vendor_details_screen.dart';
 import '../../core/theme/app_colors.dart';
@@ -16,6 +18,47 @@ import '../../features/bookings/my_bookings_screen.dart';
 import '../../features/explore/explore_screen.dart';
 import '../../features/orders/orders_screen.dart';
 import '../../features/profile/profile_screen.dart';
+
+/// جرس الإشعارات مع عداد غير المقروء (حي عبر provider).
+class _BellButton extends ConsumerWidget {
+  const _BellButton({required this.c});
+  final AppColors c;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final token = ref.watch(sessionTokenProvider);
+    final unreadAsync = ref.watch(_unreadProvider(token));
+    final unread = unreadAsync.valueOrNull ?? 0;
+    return Stack(clipBehavior: Clip.none, children: [
+      IconButton(
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsScreen())),
+        icon: Icon(Icons.notifications_none_rounded, size: 26, color: c.textPrimary),
+      ),
+      if (unread > 0)
+        Positioned(
+          top: 6, left: 6,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            decoration: BoxDecoration(color: c.error, borderRadius: BorderRadius.circular(10)),
+            constraints: const BoxConstraints(minWidth: 16),
+            child: Text('$unread', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                textAlign: TextAlign.center),
+          ),
+        ),
+    ]);
+  }
+}
+
+final _unreadProvider = FutureProvider.autoDispose.family<int, String?>((ref, token) async {
+  final token = ref.watch(sessionTokenProvider);
+  if (token == null) return 0;
+  try {
+    final d = await ref.watch(apiClientProvider).get('/notifications/unread-count');
+    return d is int ? d : (d is num ? d.toInt() : 0);
+  } catch (_) {
+    return 0;
+  }
+});
 
 /// أيقونة التصنيف حسب slug — هوية بصرية مميزة لكل نوع خدمة.
 IconData _iconForCategory(String? slug) => switch (slug) {
@@ -90,18 +133,29 @@ class HomeScreen extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH, vertical: AppSpacing.s8),
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, AppSpacing.s12, AppSpacing.screenH, 0),
                     child: Row(children: [
-                      Icon(Icons.location_on_outlined, size: 20, color: c.primary),
-                      const SizedBox(width: AppSpacing.s4),
-                      Flexible(child: Text('دمشق', style: AppText.headingS(c.textPrimary),
-                          maxLines: 1, overflow: TextOverflow.ellipsis)),
-                      Icon(Icons.keyboard_arrow_down, size: 20, color: c.textMuted),
-                      const Spacer(),
-                      InkWell(
-                        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsScreen())),
-                        child: Icon(Icons.notifications_none, size: 26, color: c.textPrimary),
-                      ),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Builder(builder: (context) {
+                          final h = DateTime.now().hour;
+                          final greet = h < 12 ? 'صباح الخير' : (h < 18 ? 'مساء النور' : 'مساء الخير');
+                          return Text(greet, style: AppText.caption(c.textMuted));
+                        }),
+                        const SizedBox(height: AppSpacing.s4),
+                        InkWell(
+                          onTap: () => showLocationPicker(context, ref),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.location_on_rounded, size: 20, color: c.primary),
+                            const SizedBox(width: AppSpacing.s4),
+                            Flexible(child: Text(ref.watch(userCityProvider),
+                                style: AppText.headingS(c.textPrimary),
+                                maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: c.textMuted),
+                          ]),
+                        ),
+                      ])),
+                      _BellButton(c: c),
                     ]),
                   ),
                   const SizedBox(height: AppSpacing.s12),
@@ -109,21 +163,25 @@ class HomeScreen extends ConsumerWidget {
                     onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const ExploreScreen(),
                     )),
+                    borderRadius: BorderRadius.circular(14),
                     child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: c.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: c.border),
+                      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: c.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: c.border),
+                        boxShadow: [BoxShadow(color: c.primary.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4))],
+                      ),
+                      child: Row(children: [
+                        Icon(Icons.search_rounded, size: 22, color: c.primary),
+                        const SizedBox(width: AppSpacing.s12),
+                        Text('قاعة أعراس؟ صالون؟ هدية؟', style: AppText.bodyM(c.textMuted)),
+                        const Spacer(),
+                        Icon(Icons.tune_rounded, size: 20, color: c.textMuted),
+                      ]),
                     ),
-                    child: Row(children: [
-                      Icon(Icons.search, size: 22, color: c.textMuted),
-                      const SizedBox(width: AppSpacing.s12),
-                      Text('ابحث عن خدمة...', style: AppText.bodyM(c.textMuted)),
-                    ]),
-                  ),
                   ),
                   const SizedBox(height: AppSpacing.s24),
                   Padding(
@@ -171,7 +229,14 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.s24),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                    child: Text('قريب منك', style: AppText.headingM(c.textPrimary)),
+                    child: Row(children: [
+                      Icon(Icons.near_me_rounded, size: 16, color: c.primary),
+                      const SizedBox(width: AppSpacing.s4),
+                      Text(ref.watch(userCityProvider) == 'موقعي الحالي' ? 'الأقرب إليك' : 'مميز لك',
+                          style: AppText.headingM(c.textPrimary)),
+                      const Spacer(),
+                      Text('عرض الكل', style: AppText.caption(c.primary)),
+                    ]),
                   ),
                   const SizedBox(height: AppSpacing.s12),
                 ]),
@@ -263,9 +328,33 @@ class HomeScreen extends ConsumerWidget {
                                 Row(children: [
                                   Icon(Icons.place_outlined, size: 14, color: c.textMuted),
                                   const SizedBox(width: 2),
-                                  Flexible(child: Text((v['address'] ?? 'الدمشقية') as String,
+                                  Flexible(child: Text((v['address'] ?? '') as String,
                                       style: AppText.caption(c.textMuted),
                                       maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                  // المسافة من موقع المستخدم إن توفرت
+                                  Builder(builder: (context) {
+                                    final me = ref.watch(userLocationProvider);
+                                    final vLat = v['latitude'];
+                                    final vLng = v['longitude'];
+                                    if (me == null || vLat == null || vLng == null) return const SizedBox.shrink();
+                                    final dist = distanceKm(me.lat, me.lng,
+                                        double.parse(vLat.toString()), double.parse(vLng.toString()));
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 6),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: c.primary.withOpacity(0.08),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                          Icon(Icons.near_me_rounded, size: 11, color: c.primary),
+                                          const SizedBox(width: 2),
+                                          Text(dist, style: AppText.caption(c.primary)),
+                                        ]),
+                                      ),
+                                    );
+                                  }),
                                 ]),
                               ]),
                             ),

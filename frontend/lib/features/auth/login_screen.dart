@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/session/session_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
@@ -36,7 +37,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         'email': _email.value.text.trim(),
         'password': _password.value.text,
       });
-      ref.read(sessionTokenProvider.notifier).state = data['accessToken'] as String;
+      final t = data['accessToken'] as String;
+      ref.read(sessionTokenProvider.notifier).state = t;
+      await SessionService.saveToken(t);
       if (!mounted) return;
       widget.onSuccess?.call();
       Navigator.of(context).pop(true);
