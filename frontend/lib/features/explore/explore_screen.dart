@@ -101,16 +101,43 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           ]),
         ),
         const SizedBox(height: AppSpacing.s12),
+        // مبدّل العملة
+        SizedBox(
+          height: 36,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+            children: [
+              _currencyChip(c, 'دولار أمريكي', 'USD'),
+              _currencyChip(c, 'ليرة سورية', 'SYP'),
+              _currencyChip(c, 'ليرة تركية', 'TRY'),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s12),
+        // شرائح السعر حسب العملة المختارة
         SizedBox(
           height: 40,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
             children: [
-              _priceChip(c, 'الكل', null),
-              _priceChip(c, '\$', 50),
-              _priceChip(c, '\$\$', 200),
-              _priceChip(c, '\$\$\$', 500),
+              if (_currency == 'USD') ...[
+                _priceChip(c, 'الكل', null),
+                _priceChip(c, r'حتى 50$', 50),
+                _priceChip(c, r'حتى 200$', 200),
+                _priceChip(c, r'حتى 500$', 500),
+              ] else if (_currency == 'SYP') ...[
+                _priceChip(c, 'الكل', null),
+                _priceChip(c, r'حتى 100 ألف', 100000),
+                _priceChip(c, r'حتى 500 ألف', 500000),
+                _priceChip(c, r'مليون فأكثر', 1000000),
+              ] else ...[
+                _priceChip(c, 'الكل', null),
+                _priceChip(c, r'حتى 500 ₺', 500),
+                _priceChip(c, r'حتى 2000 ₺', 2000),
+                _priceChip(c, r'5000 ₺ فأكثر', 5000),
+              ],
             ],
           ),
         ),
