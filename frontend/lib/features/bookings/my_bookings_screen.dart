@@ -12,45 +12,23 @@ import '../../core/network/api_client.dart';
 import '../auth/login_screen.dart';
 
 /// حجوزاتي — قائمة حجوزات العميل بالحالة (tab الحجوزات في الشل).
-class MyBookingsScreen extends ConsumerStatefulWidget {
+/// مصممة كـ FutureProvider.family: أي تغيّر بالتوكن يعيد إنشاء الـ future تلقائياً.
+final myBookingsProvider = FutureProvider.autoDispose<dynamic>((ref) {
+  final token = ref.watch(sessionTokenProvider);
+  if (token == null) return null;
+  return ref.watch(apiClientProvider).get('/bookings/mine').catchError((_) => null);
+});
+
+class MyBookingsScreen extends ConsumerWidget {
   const MyBookingsScreen({super.key});
 
   @override
-  ConsumerState<MyBookingsScreen> createState() => _MyBookingsScreenState();
-}
-
-class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
-  late Future<dynamic> _future;
-  bool _needLogin = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  void _load() {
-    final api = ref.read(apiClientProvider);
-    if (api.token == null) { _needLogin = true; _future = Future.value(null); return; }
-    _future = api.get('/bookings/mine').catchError((_) => null);
-  }
-
-  void _reloadOnToken(String? token) {
-    setState(() {
-      _needLogin = token == null;
-      _load();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
-    // إعادة الجلب تلقائياً عند تغير التوكن (دخول/خروج)
-    ref.listen<String?>(sessionTokenProvider, (prev, next) {
-      if (prev != next) _reloadOnToken(next);
-    });
-    final tokenNow = ref.watch(sessionTokenProvider);
-    if (_needLogin && tokenNow == null) {
+    final token = ref.watch(sessionTokenProvider);
+    final bookingsAsync = ref.watch(myBookingsProvider);
+
+    if (token == null) {
       return Scaffold(backgroundColor: c.background, appBar: AppBar(title: const Text('حجوزاتي')), body: EmptyState(
         icon: Icons.lock_outline,
         title: 'سجّل الدخول لعرض حجوزاتك',
@@ -59,22 +37,21 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
         onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen())),
       ));
     }
+
     return Scaffold(
       backgroundColor: c.background,
       appBar: AppBar(title: const Text('حجوزاتي')),
-      body: FutureBuilder<dynamic>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return Column(children: List.generate(4, (_) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH, vertical: AppSpacing.s8),
-              child: const SkeletonLoader(height: 88),
-            )));
+      body: bookingsAsync.when(
+        loading: () => Column(children: List.generate(4, (_) => const Padding(
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH, vertical: AppSpacing.s8),
+          child: SkeletonLoader(height: 88),
+        ))),
+        error: (_, __) => ErrorState(message: 'تعذر تحميل الحجوزات', onRetry: () => ref.invalidate(myBookingsProvider)),
+        data: (data) {
+          if (data == null) {
+            return ErrorState(message: 'تعذر تحميل الحجوزات', onRetry: () => ref.invalidate(myBookingsProvider));
           }
-          if (snap.hasError || snap.data == null) {
-            return ErrorState(message: 'تعذر تحميل الحجوزات', onRetry: () { setState(_load); });
-          }
-          final rows = _rowsOf(snap.data);
+          final rows = _rowsOf(data);
           if (rows.isEmpty) {
             return EmptyState(
               icon: Icons.event_busy_outlined,
@@ -83,46 +60,54 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
               actionLabel: 'استكشف الخدمات',
             );
           }
-          return ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.screenH),
-            itemCount: rows.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s12),
-            itemBuilder: (context, i) {
-              final b = rows[i];
-              return Container(
-                padding: const EdgeInsets.all(AppSpacing.s16),
-                decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: c.border)),
-                child: Row(children: [
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      Expanded(child: Text(b['bookingRef'] as String,
-                          style: AppText.headingS(c.textPrimary),
-                          maxLines: 1, overflow: TextOverflow.ellipsis)),
-                      const SizedBox(width: AppSpacing.s8),
-                      StatusBadge(status: _map(b['status'] as String)),
-                    ]),
-                    const SizedBox(height: AppSpacing.s8),
-                    Text(fmtDate(b['startsAt'] as String),
-                        style: AppText.caption(c.textMuted)),
-                  ])),
-                ]),
-              );
-            },
+          return RefreshIndicator(
+            color: c.primary,
+            onRefresh: () async => ref.refresh(myBookingsProvider.future),
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppSpacing.screenH),
+              itemCount: rows.length,
+              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s12),
+              itemBuilder: (context, i) {
+                final b = rows[i];
+                return Container(
+                  padding: const EdgeInsets.all(AppSpacing.s16),
+                  decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: c.border)),
+                  child: Row(children: [
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Expanded(child: Text((b['bookingRef'] ?? '') as String,
+                            style: AppText.headingS(c.textPrimary),
+                            maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        const SizedBox(width: AppSpacing.s8),
+                        StatusBadge(status: _map((b['status'] ?? 'PENDING') as String)),
+                      ]),
+                      const SizedBox(height: AppSpacing.s8),
+                      Text(_fmtDate((b['startsAt'] ?? '') as String),
+                          style: AppText.caption(c.textMuted)),
+                    ])),
+                  ]),
+                );
+              },
+            ),
           );
         },
       ),
     );
   }
 
-  /// الاستجابة قد تكون [rows] أو {data:[rows]} — نتعامل مع الحالتين.
+  /// الاستجابة قد تكون [total, rows] أو [rows] أو {data:[...]} — بأمان.
   static List<Map<String, dynamic>> _rowsOf(dynamic d) {
-    if (d is List) return d.cast<Map<String, dynamic>>();
+    if (d is List) {
+      if (d.length == 2 && d[0] is num && d[1] is List) return (d[1] as List).cast<Map<String, dynamic>>();
+      return d.cast<Map<String, dynamic>>();
+    }
     if (d is Map && d['data'] is List) return (d['data'] as List).cast<Map<String, dynamic>>();
     return const [];
   }
 
-  static String fmtDate(String iso) {
+  static String _fmtDate(String iso) {
     final d = DateTime.tryParse(iso)?.toLocal();
     if (d == null) return iso;
     return '${d.day}/${d.month}/${d.year} — ${d.hour}:${d.minute.toString().padLeft(2, '0')}';

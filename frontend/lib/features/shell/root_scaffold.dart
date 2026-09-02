@@ -40,40 +40,38 @@ class _RootScaffoldState extends ConsumerState<RootScaffold> {
   }
 }
 
+/// بيانات الرئيسية — FutureProvider يعاد إنشاؤه تلقائياً عند الإبطال.
+final homeVendorsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final d = await ref.watch(apiClientProvider).get('/vendors?limit=10');
+  if (d is List) return d.cast<Map<String, dynamic>>();
+  if (d is Map && d['data'] is List) return (d['data'] as List).cast<Map<String, dynamic>>();
+  return const <Map<String, dynamic>>[];
+});
+
+final homeCategoriesProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final d = await ref.watch(apiClientProvider).get('/categories');
+  if (d is List) return d.cast<Map<String, dynamic>>();
+  return const <Map<String, dynamic>>[];
+});
+
 /// Home — كما في التصميم المعتمد (موقع/بحث/تصنيفات/عروض/قريب منك).
-class HomeScreen extends ConsumerStatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  late final Future<List<Map<String, dynamic>>> _future;
-  late final Future<List<Map<String, dynamic>>> _cats;
-
-  @override
-  void initState() {
-    super.initState();
-    final api = ref.read(apiClientProvider);
-    _future = api.get('/vendors?limit=10').then((d) {
-      // d هو data مباشرة (ApiClient يفتح الـ envelope)
-      if (d is List) return d.cast<Map<String, dynamic>>();
-      if (d is Map && d['data'] is List) return (d['data'] as List).cast<Map<String, dynamic>>();
-      return const <Map<String, dynamic>>[];
-    });
-    _cats = api.get('/categories').then((d) => (d as List).cast<Map<String, dynamic>>());
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
+    final vendorsAsync = ref.watch(homeVendorsProvider);
+    final catsAsync = ref.watch(homeCategoriesProvider);
     return Scaffold(
       backgroundColor: c.background,
       body: SafeArea(
         child: RefreshIndicator(
           color: c.primary,
-          onRefresh: () async => setState(() {}),
+          onRefresh: () async {
+            ref.invalidate(homeVendorsProvider);
+            ref.invalidate(homeCategoriesProvider);
+          },
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
@@ -121,26 +119,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: Text('التصنيفات', style: AppText.headingM(c.textPrimary)),
                   ),
                   const SizedBox(height: AppSpacing.s12),
-                  FutureBuilder<List<Map<String, dynamic>>>(
-                    future: _cats,
-                    builder: (context, snap) {
-                      if (snap.connectionState != ConnectionState.done) {
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: List.generate(4, (_) => const SkeletonLoader(width: 60, height: 60, borderRadius: BorderRadius.all(Radius.circular(999)))),
-                        );
-                      }
-                      final cats = (snap.data ?? []).take(6).toList();
-                      if (cats.isEmpty) return const SizedBox.shrink();
+                  catsAsync.when(
+                    loading: () { return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: List.generate(4, (_) => const SkeletonLoader(width: 60, height: 60, borderRadius: BorderRadius.all(Radius.circular(999)))),
+                    ); },
+                    error: (_, __) => const SizedBox.shrink(),
+                    data: (cats) {
+                      final shown = cats.take(6).toList();
+                      if (shown.isEmpty) return const SizedBox.shrink();
                       return SizedBox(
                         height: 92,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                          itemCount: cats.length,
+                          itemCount: shown.length,
                           separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.s16),
                           itemBuilder: (context, i) {
-                            final cat = cats[i];
+                            final cat = shown[i];
                             return SizedBox(
                               width: 68,
                               child: Column(children: [
@@ -170,24 +166,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                sliver: FutureBuilder<List<Map<String, dynamic>>>(
-                  future: _future,
-                  builder: (context, snap) {
-                    if (snap.connectionState != ConnectionState.done) {
-                      return SliverToBoxAdapter(child: Column(
-                        children: List.generate(3, (_) => const Padding(
-                          padding: EdgeInsets.only(bottom: AppSpacing.s12),
-                          child: SkeletonLoader(height: 120),
-                        )),
-                      ));
-                    }
-                    if (snap.hasError) {
-                      return SliverToBoxAdapter(child: ErrorState(
-                        message: 'تعذر تحميل البائعين، تحقق من اتصالك',
-                        onRetry: () => setState(() {}),
-                      ));
-                    }
-                    final vendors = snap.data ?? [];
+                sliver: vendorsAsync.when(
+                  loading: () => const SliverToBoxAdapter(child: Column(
+                    children: [
+                      Padding(padding: EdgeInsets.only(bottom: AppSpacing.s12), child: SkeletonLoader(height: 120)),
+                      Padding(padding: EdgeInsets.only(bottom: AppSpacing.s12), child: SkeletonLoader(height: 120)),
+                      Padding(padding: EdgeInsets.only(bottom: AppSpacing.s12), child: SkeletonLoader(height: 120)),
+                    ],
+                  )),
+                  error: (_, __) => SliverToBoxAdapter(child: ErrorState(
+                    message: 'تعذر تحميل البائعين، تحقق من اتصالك',
+                    onRetry: () { ref.invalidate(homeVendorsProvider); },
+                  )),
+                  data: (vendors) {
                     if (vendors.isEmpty) {
                       return SliverToBoxAdapter(child: EmptyState(
                         icon: Icons.store_mall_directory_outlined,
