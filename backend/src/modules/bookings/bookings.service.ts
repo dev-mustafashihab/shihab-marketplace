@@ -19,6 +19,9 @@ const BOOKING_SELECT = {
   customerNote: true,
   expiresAt: true,
   createdAt: true,
+  vendor: { select: { id: true, name: true, slug: true, imageUrl: true } },
+  service: { select: { id: true, name: true } },
+  resource: { select: { id: true, name: true } },
 } satisfies Prisma.BookingSelect;
 
 const BOOKING_REF_PREFIX = 'BK';

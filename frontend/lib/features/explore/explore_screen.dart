@@ -26,10 +26,12 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   final _controller = TextEditingController();
   String _query = '';
   double? _maxPrice;
+  String _currency = 'USD'; // USD | SYP | TRY
 
   @override
   void initState() {
     super.initState();
+    if (widget.categoryId != null) _maxPrice = null;
     _controller.addListener(() {
       if (_controller.text.trim() != _query) {
         _query = _controller.text.trim();
@@ -211,6 +213,22 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           ),
         ),
       ]),
+    );
+  }
+
+  Widget _currencyChip(AppColors c, String label, String code) {
+    final selected = _currency == code;
+    return Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.s8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) => setState(() { _currency = code; _maxPrice = null; }),
+        labelStyle: AppText.button(selected ? c.surface : c.textSecondary),
+        selectedColor: c.accent,
+        backgroundColor: c.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
     );
   }
 

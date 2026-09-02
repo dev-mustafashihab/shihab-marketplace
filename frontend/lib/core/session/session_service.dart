@@ -98,15 +98,17 @@ Future<bool> acquireLocation(WidgetRef ref) async {
 /// إحداثيات مدن سوريا الرئيسية — للاختيار اليدوي
 const SYRIA_CITIES = <String, LatLng>{
   'دمشق': LatLng(lat: 33.5138, lng: 36.2765),
+  'ريف دمشق': LatLng(lat: 33.4700, lng: 36.3000),
   'حلب': LatLng(lat: 36.2021, lng: 37.1343),
   'حمص': LatLng(lat: 34.7324, lng: 36.7137),
-  'اللاذقية': LatLng(lat: 35.5184, lng: 35.7955),
   'حماة': LatLng(lat: 35.1318, lng: 36.7580),
-  'درعا': LatLng(lat: 32.6253, lng: 36.1025),
-  'دير الزور': LatLng(lat: 35.3360, lng: 40.1420),
-  'السويداء': LatLng(lat: 32.7057, lng: 36.8714),
+  'اللاذقية': LatLng(lat: 35.5184, lng: 35.7955),
   'طرطوس': LatLng(lat: 34.8890, lng: 35.8866),
+  'درعا': LatLng(lat: 32.6253, lng: 36.1025),
+  'السويداء': LatLng(lat: 32.7057, lng: 36.8714),
+  'قنيطرة': LatLng(lat: 33.1250, lng: 35.8250),
+  'دير الزور': LatLng(lat: 35.3360, lng: 40.1420),
+  'الحسكة': LatLng(lat: 36.5020, lng: 40.7480),
   'الرقة': LatLng(lat: 35.9500, lng: 38.9970),
   'إدلب': LatLng(lat: 35.9330, lng: 36.6330),
-  'الحسكة': LatLng(lat: 36.5020, lng: 40.7480),
 };

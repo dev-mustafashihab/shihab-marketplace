@@ -19,6 +19,74 @@ import '../../features/explore/explore_screen.dart';
 import '../../features/orders/orders_screen.dart';
 import '../../features/profile/profile_screen.dart';
 
+/// بطاقة تصنيف — لون مميز لكل نوع + نقر يفتح الاستكشاف المفلتر.
+class _CategoryCard extends StatelessWidget {
+  const _CategoryCard({required this.name, required this.slug, required this.onTap});
+  final String name;
+  final String? slug;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final spec = _catSpec(slug);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 84,
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s8, horizontal: AppSpacing.s4),
+        decoration: BoxDecoration(
+          color: spec.color.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: spec.color.withOpacity(0.25)),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(color: spec.color, borderRadius: BorderRadius.circular(13)),
+            child: Icon(spec.icon, size: 24, color: Colors.white),
+          ),
+          const SizedBox(height: AppSpacing.s8),
+          SizedBox(
+            width: 78,
+            child: Text(name, style: AppText.caption(c.textPrimary),
+                maxLines: 2, textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// مواصفات التصنيف: أيقونة + لون مميز.
+class _CatSpec {
+  const _CatSpec(this.icon, this.color);
+  final IconData icon;
+  final Color color;
+}
+
+_CatSpec _catSpec(String? slug) {
+  // الألوان ثابتة (بلا context) — درجات متناسقة مع الهوية
+  switch (slug) {
+    case 'venues':
+      return _CatSpec(Icons.account_balance_rounded, const Color(0xFF8E7CC3));
+    case 'salons':
+      return _CatSpec(Icons.content_cut_rounded, const Color(0xFFE58BA5));
+    case 'restaurants':
+      return _CatSpec(Icons.restaurant_rounded, const Color(0xFFE09F5A));
+    case 'gifts':
+      return _CatSpec(Icons.card_giftcard_rounded, const Color(0xFF64B5A4));
+    case 'pools':
+      return _CatSpec(Icons.pool_rounded, const Color(0xFF5A9BD5));
+    case 'photography':
+      return _CatSpec(Icons.photo_camera_rounded, const Color(0xFFB08968));
+    default:
+      return _CatSpec(Icons.storefront_rounded, const Color(0xFF6B8E7B));
+  }
+}
+
 /// جرس الإشعارات مع عداد غير المقروء (حي عبر provider).
 class _BellButton extends ConsumerWidget {
   const _BellButton({required this.c});
@@ -192,34 +260,27 @@ class HomeScreen extends ConsumerWidget {
                   catsAsync.when(
                     loading: () { return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: List.generate(4, (_) => const SkeletonLoader(width: 60, height: 60, borderRadius: BorderRadius.all(Radius.circular(999)))),
+                      children: List.generate(4, (_) => const SkeletonLoader(width: 76, height: 84, borderRadius: BorderRadius.all(Radius.circular(16)))),
                     ); },
                     error: (_, __) => const SizedBox.shrink(),
                     data: (cats) {
                       final shown = cats.take(6).toList();
                       if (shown.isEmpty) return const SizedBox.shrink();
                       return SizedBox(
-                        height: 92,
+                        height: 108,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
                           itemCount: shown.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.s16),
+                          separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.s12),
                           itemBuilder: (context, i) {
                             final cat = shown[i];
-                            return SizedBox(
-                              width: 68,
-                              child: Column(children: [
-                                Container(
-                                  width: 60, height: 60,
-                                  decoration: BoxDecoration(color: c.primary.withOpacity(0.08), shape: BoxShape.circle),
-                                  child: Icon(Icons.storefront_outlined, size: 26, color: c.primary),
-                                ),
-                                const SizedBox(height: AppSpacing.s8),
-                                Text(cat['nameAr'] as String? ?? '',
-                                    style: AppText.caption(c.textSecondary),
-                                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                              ]),
+                            return _CategoryCard(
+                              name: (cat['nameAr'] ?? '') as String,
+                              slug: cat['slug'] as String?,
+                              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                                builder: (_) => ExploreScreen(categoryId: cat['id'] as String),
+                              )),
                             );
                           },
                         ),
