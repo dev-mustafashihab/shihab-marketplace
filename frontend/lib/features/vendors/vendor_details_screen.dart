@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_client.dart';
@@ -48,16 +49,31 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen> {
           final services = (v['services'] as List? ?? []).cast<Map<String, dynamic>>();
           return Stack(children: [
             ListView(padding: const EdgeInsets.only(bottom: 100), children: [
-              Container(
-                height: 140,
-                color: c.primary.withOpacity(0.1),
-                alignment: Alignment.center,
-                child: Icon(Icons.storefront_outlined, size: 48, color: c.primary),
-              ),
+              if (v['imageUrl'] != null)
+                CachedNetworkImage(
+                  imageUrl: 'https://panel.fahd-car.cloud${v['imageUrl']}',
+                  height: 190, width: double.infinity, fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(height: 190, color: c.primary.withOpacity(0.06)),
+                  errorWidget: (_, __, ___) => Container(height: 190, color: c.primary.withOpacity(0.06), child: Icon(Icons.storefront_outlined, size: 48, color: c.primary)),
+                )
+              else
+                Container(
+                  height: 190,
+                  color: c.primary.withOpacity(0.08),
+                  alignment: Alignment.center,
+                  child: Icon(Icons.storefront_outlined, size: 48, color: c.primary),
+                ),
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.screenH),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(v['name'] as String, style: AppText.headingL(c.textPrimary)),
+                  Row(children: [
+                    Expanded(child: Text(v['name'] as String, style: AppText.headingL(c.textPrimary))),
+                    const SizedBox(width: AppSpacing.s8),
+                    Icon(Icons.star, size: 18, color: c.accent),
+                    const SizedBox(width: 2),
+                    Text('${v['averageRating'] ?? 0} (${v['reviewCount'] ?? 0})',
+                        style: AppText.bodyM(c.textSecondary)),
+                  ]),
                   const SizedBox(height: AppSpacing.s8),
                   Text(v['description'] as String? ?? '',
                       style: AppText.bodyM(c.textSecondary)),

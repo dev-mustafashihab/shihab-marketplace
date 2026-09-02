@@ -60,6 +60,7 @@ model User {
   reviews       Review[]
   favorites     Favorite[]
   notifications Notification[]
+  media         Media[]
 
   @@map("users")
 }
@@ -158,6 +159,23 @@ model Category {
   @@map("categories")
 }
 
+model Media {
+  id         String   @id @default(uuid()) @db.Uuid
+  ownerId    String   @map("owner_id") @db.Uuid
+  vendorId   String?  @map("vendor_id") @db.Uuid
+  kind       String   @default("IMAGE") @db.VarChar(20)
+  filePath   String   @map("file_path") @db.VarChar(500)
+  mimeType   String   @map("mime_type") @db.VarChar(100)
+  sizeBytes  Int      @map("size_bytes")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  owner  User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  vendor Vendor? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@map("media")
+}
+
 model Vendor {
   id            String       @id @default(uuid()) @db.Uuid
   ownerId       String       @unique @map("owner_id") @db.Uuid
@@ -174,11 +192,13 @@ model Vendor {
   minPrice      Int?         @map("min_price")
   currency      String       @default("USD") @db.VarChar(3)
   isOpen        Boolean      @default(true) @map("is_open")
+  imageUrl      String?      @map("image_url") @db.VarChar(500)
   location      Unsupported("geography(Point,4326)")?
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
   owner       User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  media       Media[]
   category    Category         @relation(fields: [categoryId], references: [id])
   services    Service[]
   products    Product[]

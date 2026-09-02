@@ -17,7 +17,9 @@ const VENDOR_CARD_SELECT = {
   minPrice: true,
   currency: true,
   isOpen: true,
+  imageUrl: true,
   category: { select: { id: true, nameAr: true, slug: true } },
+  reviews: { select: { rating: true } },
 } satisfies Prisma.VendorSelect;
 
 @Injectable()
@@ -52,7 +54,11 @@ export class VendorsService {
     ]);
     return {
       success: true as const,
-      data,
+      data: data.map(({ reviews, ...v }) => ({
+        ...v,
+        averageRating: reviews.length ? Number((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)) : 0,
+        reviewCount: reviews.length,
+      })),
       message: null,
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
@@ -80,7 +86,12 @@ export class VendorsService {
       },
     });
     if (!vendor) throw new NotFoundException('Vendor not found');
-    return vendor;
+    const reviews = (vendor as { reviews?: { rating: number }[] }).reviews ?? [];
+    return {
+      ...vendor,
+      averageRating: reviews.length ? Number((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)) : 0,
+      reviewCount: reviews.length,
+    };
   }
 
   /** البائع ينشئ متجره — واحد فقط لكل مالك، ويبدأ PENDING للتحقق */

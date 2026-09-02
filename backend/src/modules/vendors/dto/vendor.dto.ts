@@ -62,6 +62,11 @@ export class CreateVendorDto {
 }
 
 export class UpdateVendorDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  imageUrl?: string;
+
   @IsOptional() @IsString() @MinLength(3) @MaxLength(150) name?: string;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsString() @MaxLength(30) phone?: string;

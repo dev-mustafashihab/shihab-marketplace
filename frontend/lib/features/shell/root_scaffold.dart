@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/network/api_client.dart';
 import '../notifications/notifications_screen.dart';
 import '../vendors/vendor_details_screen.dart';
@@ -15,6 +16,17 @@ import '../../features/bookings/my_bookings_screen.dart';
 import '../../features/explore/explore_screen.dart';
 import '../../features/orders/orders_screen.dart';
 import '../../features/profile/profile_screen.dart';
+
+/// أيقونة التصنيف حسب slug — هوية بصرية مميزة لكل نوع خدمة.
+IconData _iconForCategory(String? slug) => switch (slug) {
+      'venues' => Icons.account_balance,
+      'salons' => Icons.content_cut,
+      'restaurants' => Icons.restaurant,
+      'gifts' => Icons.card_giftcard,
+      'pools' => Icons.pool,
+      'photography' => Icons.photo_camera,
+      _ => Icons.storefront_outlined,
+    };
 
 /// الجذر: Bottom Shell + عربي RTL من اللحظة الأولى.
 class RootScaffold extends ConsumerStatefulWidget {
@@ -197,36 +209,66 @@ class HomeScreen extends ConsumerWidget {
                             builder: (_) => VendorDetailsScreen(idOrSlug: v['slug'] as String? ?? v['id'] as String),
                           )),
                           child: Container(
-                          padding: const EdgeInsets.all(AppSpacing.s16),
+                          clipBehavior: Clip.antiAlias,
                           decoration: BoxDecoration(
                             color: c.surface,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
                             border: Border.all(color: c.border),
                           ),
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Row(children: [
-                              Expanded(child: Text(v['name'] as String? ?? '',
-                                  style: AppText.headingS(c.textPrimary),
-                                  maxLines: 1, overflow: TextOverflow.ellipsis)),
-                              const SizedBox(width: AppSpacing.s8),
-                              Icon(Icons.star, size: 16, color: c.accent),
-                              Text(' ${v['minPrice'] != null ? '${v['minPrice']} \$+' : '—'}',
-                                  style: AppText.caption(c.textSecondary)),
-                            ]),
-                            const SizedBox(height: AppSpacing.s8),
-                            Text(v['description'] as String? ?? '',
-                                style: AppText.bodyM(c.textSecondary),
-                                maxLines: 2, overflow: TextOverflow.ellipsis),
-                            const SizedBox(height: AppSpacing.s8),
-                            Row(children: [
-                              if (v['address'] != null) ...[
-                                Icon(Icons.place_outlined, size: 14, color: c.textMuted),
-                                const SizedBox(width: 2),
-                                Flexible(child: Text(v['address'] as String,
-                                    style: AppText.caption(c.textMuted),
-                                    maxLines: 1, overflow: TextOverflow.ellipsis)),
-                              ],
-                            ]),
+                            // صورة الغلاف — 150px مع fallback أنيق
+                            if (v['imageUrl'] != null)
+                              CachedNetworkImage(
+                                imageUrl: 'https://panel.fahd-car.cloud${v['imageUrl']}',
+                                height: 130, width: double.infinity, fit: BoxFit.cover,
+                                placeholder: (_, __) => Container(height: 130, color: c.primary.withOpacity(0.06)),
+                                errorWidget: (_, __, ___) => Container(
+                                  height: 130, color: c.primary.withOpacity(0.06),
+                                  child: Icon(Icons.storefront_outlined, size: 40, color: c.primary.withOpacity(0.4)),
+                                ),
+                              )
+                            else
+                              Container(
+                                height: 130, width: double.infinity, color: c.primary.withOpacity(0.06),
+                                child: Icon(Icons.storefront_outlined, size: 40, color: c.primary.withOpacity(0.5)),
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.all(AppSpacing.s12),
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Row(children: [
+                                  Expanded(child: Text(v['name'] as String? ?? '',
+                                      style: AppText.headingS(c.textPrimary),
+                                      maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                  const SizedBox(width: AppSpacing.s8),
+                                  Icon(Icons.star, size: 16, color: c.accent),
+                                  const SizedBox(width: 2),
+                                  Text('${v['averageRating'] ?? 0}',
+                                      style: AppText.caption(c.textSecondary)),
+                                  const SizedBox(width: AppSpacing.s8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: c.primary.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(v['minPrice'] != null ? 'من ${v['minPrice']} \$' : '—',
+                                        style: AppText.caption(c.primary)),
+                                  ),
+                                ]),
+                                const SizedBox(height: AppSpacing.s8),
+                                Text(v['description'] as String? ?? '',
+                                    style: AppText.bodyM(c.textSecondary),
+                                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: AppSpacing.s8),
+                                Row(children: [
+                                  Icon(Icons.place_outlined, size: 14, color: c.textMuted),
+                                  const SizedBox(width: 2),
+                                  Flexible(child: Text((v['address'] ?? 'الدمشقية') as String,
+                                      style: AppText.caption(c.textMuted),
+                                      maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                ]),
+                              ]),
+                            ),
                           ]),
                           ),
                         );
