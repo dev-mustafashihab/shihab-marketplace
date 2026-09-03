@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+
+import '../session/session_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// طبقة الشبكة — envelope موحد {success,data,message,meta} + توكن اختياري.
@@ -43,14 +45,19 @@ class ApiClient {
         if (token != null) 'Authorization': 'Bearer $token',
       };
 
-  Future<dynamic> _run(Future<http.Response> Function() fn) async {
-    // ignore: avoid_print
-    print('API-DEBUG: request start');
+  Future<dynamic> _run(Future<http.Response> Function() fn, {bool retried = false}) async {
     final res = await fn().timeout(const Duration(seconds: 20));
-    // ignore: avoid-print
-    print('API-DEBUG: response ${res.statusCode}');
     if (res.body.isEmpty) throw ApiException('لا يوجد اتصال بالخادم', status: res.statusCode);
     final json = jsonDecode(res.body) as Map<String, dynamic>;
+
+    // 401 → جرّب تجديد الـ access عبر الـ refresh ثم أعد الطلب مرة واحدة
+    if (res.statusCode == 401 && !retried) {
+      final newToken = await _tryRefresh();
+      if (newToken != null) {
+        return _run(fn, retried: true);
+      }
+    }
+
     if (res.statusCode >= 400 || json['success'] != true) {
       throw ApiException(
         (json['message'] as String?) ?? 'حدث خطأ، أعد المحاولة',
@@ -59,6 +66,33 @@ class ApiClient {
       );
     }
     return json['data'];
+  }
+
+  /// تجديد الـ access token عبر refresh token المخزَّن — يحدّث الجلسة ويعيد توكن جديد أو null.
+  Future<String?> _tryRefresh() async {
+    try {
+      final refresh = await SessionService.getRefreshToken();
+      if (refresh == null || refresh.isEmpty) return null;
+      final res = await http
+          .post(Uri.parse('$baseUrl/auth/refresh'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'refreshToken': refresh}))
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode != 200) return null;
+      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      if (json['success'] != true || json['data'] is! Map) return null;
+      final d = json['data'] as Map<String, dynamic>;
+      final access = d['accessToken'] as String?;
+      final newRefresh = d['refreshToken'] as String?;
+      if (access == null || access.isEmpty) return null;
+      await SessionService.saveToken(access);
+      if (newRefresh != null && newRefresh.isNotEmpty) {
+        await SessionService.saveRefreshToken(newRefresh);
+      }
+      return access;
+    } catch (_) {
+      return null;
+    }
   }
 }
 

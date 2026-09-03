@@ -9,6 +9,7 @@ import '../network/api_client.dart';
 /// خدمة الجلسة الدائمة: حفظ التوكن + نقطة الموقع — الواجهة الموحدة للتبعية.
 class SessionService {
   static const _kToken = 'sm_token';
+  static const _kRefresh = 'sm_refresh';
   static const _kLat = 'sm_lat';
   static const _kLng = 'sm_lng';
   static const _kCity = 'sm_city';
@@ -41,6 +42,21 @@ class SessionService {
       await prefs.remove(_kToken);
     } else {
       await prefs.setString(_kToken, token);
+    }
+  }
+
+  /// توكن التجديد (7 أيام) — يُحفظ مع الدخول ويُستخدم عند انتهاء الـ access.
+  static Future<String?> getRefreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kRefresh);
+  }
+
+  static Future<void> saveRefreshToken(String? token) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (token == null || token.isEmpty) {
+      await prefs.remove(_kRefresh);
+    } else {
+      await prefs.setString(_kRefresh, token);
     }
   }
 

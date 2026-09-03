@@ -43,6 +43,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final t = data['accessToken'] as String;
       ref.read(sessionTokenProvider.notifier).state = t;
       await SessionService.saveToken(t);
+      final r = data['refreshToken'] as String?;
+      if (r != null && r.isNotEmpty) await SessionService.saveRefreshToken(r);
       if (!mounted) return;
       widget.onSuccess?.call();
       Navigator.of(context).pop(true);
