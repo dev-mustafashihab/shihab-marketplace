@@ -142,19 +142,19 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             children: [
               if (_currency == 'USD') ...[
                 _priceChip(c, 'الكل', null),
-                _priceChip(c, r'حتى 50$', 50),
-                _priceChip(c, r'حتى 200$', 200),
-                _priceChip(c, r'حتى 500$', 500),
+                _priceChip(c, 'حتى 50 دولار', 50),
+                _priceChip(c, 'حتى 200 دولار', 200),
+                _priceChip(c, 'حتى 500 دولار', 500),
               ] else if (_currency == 'SYP') ...[
                 _priceChip(c, 'الكل', null),
-                _priceChip(c, r'حتى 100 ألف', 100000),
-                _priceChip(c, r'حتى 500 ألف', 500000),
-                _priceChip(c, r'مليون فأكثر', 1000000),
+                _priceChip(c, 'حتى 100 ألف ل.س', 100000),
+                _priceChip(c, 'حتى 500 ألف ل.س', 500000),
+                _priceChip(c, 'مليون ل.س فأكثر', 1000000),
               ] else ...[
                 _priceChip(c, 'الكل', null),
-                _priceChip(c, r'حتى 500 ₺', 500),
-                _priceChip(c, r'حتى 2000 ₺', 2000),
-                _priceChip(c, r'5000 ₺ فأكثر', 5000),
+                _priceChip(c, 'حتى 500 ل.ت', 500),
+                _priceChip(c, 'حتى 2000 ل.ت', 2000),
+                _priceChip(c, '5000 ل.ت فأكثر', 5000),
               ],
             ],
           ),

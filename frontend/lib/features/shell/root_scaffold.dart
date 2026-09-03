@@ -34,9 +34,8 @@ class _CategoryCard extends StatelessWidget {
     return Semantics(
       button: true,
       label: name,
-      child: SizedBox(
-        width: 126,
-        height: 48,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 88, maxWidth: 220, minHeight: 48, maxHeight: 48),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
@@ -47,8 +46,9 @@ class _CategoryCard extends StatelessWidget {
               border: Border.all(color: c.border),
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s8, vertical: AppSpacing.s8),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12, vertical: AppSpacing.s8),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 textDirection: TextDirection.rtl,
                 children: [
                   Container(
@@ -61,13 +61,12 @@ class _CategoryCard extends StatelessWidget {
                     child: Icon(spec.icon, size: 18, color: spec.color),
                   ),
                   const SizedBox(width: AppSpacing.s8),
-                  Expanded(
-                    child: Text(
-                      name,
-                      style: AppText.caption(c.textPrimary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  Text(
+                    name,
+                    style: AppText.caption(c.textPrimary),
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

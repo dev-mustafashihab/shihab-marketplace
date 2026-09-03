@@ -41,6 +41,7 @@ class _HomeSearchSheetState extends ConsumerState<_HomeSearchSheet> {
   Future<List<Map<String, dynamic>>>? _future;
   String _query = '';
   double? _maxPrice;
+  String _currency = 'USD'; // USD | SYP | TRY
   bool _filtersOpen = false;
 
   @override
@@ -95,6 +96,19 @@ class _HomeSearchSheetState extends ConsumerState<_HomeSearchSheet> {
 
   void _setPrice(double? value) {
     setState(() => _maxPrice = value);
+    if (_query.isNotEmpty) {
+      final future = _search();
+      setState(() {
+        _future = future;
+      });
+    }
+  }
+
+  void _setCurrency(String code) {
+    setState(() {
+      _currency = code;
+      _maxPrice = null;
+    });
     if (_query.isNotEmpty) {
       final future = _search();
       setState(() {
@@ -199,10 +213,28 @@ class _HomeSearchSheetState extends ConsumerState<_HomeSearchSheet> {
                         Text('خيارات الفلترة', style: AppText.bodyL(c.textPrimary)),
                         const SizedBox(height: AppSpacing.s8),
                         Wrap(spacing: AppSpacing.s8, runSpacing: AppSpacing.s8, children: [
-                          _priceChoice(c, 'الكل', null),
-                          _priceChoice(c, 'حتى 50\$', 50),
-                          _priceChoice(c, 'حتى 200\$', 200),
-                          _priceChoice(c, 'حتى 500\$', 500),
+                          _currencyChoice(c, 'دولار أمريكي', 'USD'),
+                          _currencyChoice(c, 'ليرة سورية', 'SYP'),
+                          _currencyChoice(c, 'ليرة تركية', 'TRY'),
+                        ]),
+                        const SizedBox(height: AppSpacing.s8),
+                        Wrap(spacing: AppSpacing.s8, runSpacing: AppSpacing.s8, children: [
+                          if (_currency == 'USD') ...[
+                            _priceChoice(c, 'الكل', null),
+                            _priceChoice(c, 'حتى 50 دولار', 50),
+                            _priceChoice(c, 'حتى 200 دولار', 200),
+                            _priceChoice(c, 'حتى 500 دولار', 500),
+                          ] else if (_currency == 'SYP') ...[
+                            _priceChoice(c, 'الكل', null),
+                            _priceChoice(c, 'حتى 100 ألف ل.س', 100000),
+                            _priceChoice(c, 'حتى 500 ألف ل.س', 500000),
+                            _priceChoice(c, 'مليون ل.س فأكثر', 1000000),
+                          ] else ...[
+                            _priceChoice(c, 'الكل', null),
+                            _priceChoice(c, 'حتى 500 ل.ت', 500),
+                            _priceChoice(c, 'حتى 2000 ل.ت', 2000),
+                            _priceChoice(c, '5000 ل.ت فأكثر', 5000),
+                          ],
                         ]),
                       ]),
                     ),
@@ -228,33 +260,52 @@ class _HomeSearchSheetState extends ConsumerState<_HomeSearchSheet> {
     );
   }
 
+  Widget _currencyChoice(AppColors c, String label, String code) {
+    final selected = _currency == code;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => _setCurrency(code),
+      selectedColor: c.primary.withOpacity(0.14),
+      labelStyle: AppText.caption(selected ? c.primary : c.textSecondary),
+      side: BorderSide(color: selected ? c.primary : c.border),
+    );
+  }
+
   Widget _results(AppColors c) {
     if (_query.isEmpty) {
-      return Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.manage_search_rounded, size: 48, color: c.primary.withOpacity(0.35)),
-          const SizedBox(height: AppSpacing.s8),
-          Text('اكتب ما تبحث عنه', style: AppText.bodyL(c.textSecondary)),
-          const SizedBox(height: AppSpacing.s4),
-          Text('ستظهر النتائج هنا مباشرة', style: AppText.caption(c.textMuted)),
-        ]),
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s16),
+        child: Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.manage_search_rounded, size: 48, color: c.primary.withOpacity(0.35)),
+            const SizedBox(height: AppSpacing.s8),
+            Text('اكتب ما تبحث عنه', style: AppText.bodyL(c.textSecondary)),
+            const SizedBox(height: AppSpacing.s4),
+            Text('ستظهر النتائج هنا مباشرة', style: AppText.caption(c.textMuted)),
+          ]),
+        ),
       );
     }
     final future = _future;
     if (future == null) {
-      return Column(children: List.generate(3, (_) => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.s16, vertical: AppSpacing.s8),
-        child: SkeletonLoader(height: 68),
-      )));
+      return SingleChildScrollView(
+        child: Column(children: List.generate(3, (_) => const Padding(
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.s16, vertical: AppSpacing.s8),
+          child: SkeletonLoader(height: 68),
+        ))),
+      );
     }
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return Column(children: List.generate(3, (_) => const Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.s16, vertical: AppSpacing.s8),
-            child: SkeletonLoader(height: 68),
-          )));
+          return SingleChildScrollView(
+            child: Column(children: List.generate(3, (_) => const Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.s16, vertical: AppSpacing.s8),
+              child: SkeletonLoader(height: 68),
+            ))),
+          );
         }
         if (snap.hasError) {
           return ErrorState(
