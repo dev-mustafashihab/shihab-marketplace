@@ -20,7 +20,7 @@ import '../../features/explore/explore_screen.dart';
 import '../../features/orders/orders_screen.dart';
 import '../../features/profile/profile_screen.dart';
 
-/// بطاقة تصنيف — لون مميز لكل نوع + نقر يفتح الاستكشاف المفلتر.
+/// شريحة تصنيف أفقية — أيقونة صغيرة واسم + نقر يفتح الاستكشاف المفلتر.
 class _CategoryCard extends StatelessWidget {
   const _CategoryCard({required this.name, required this.slug, required this.onTap});
   final String name;
@@ -35,35 +35,43 @@ class _CategoryCard extends StatelessWidget {
       button: true,
       label: name,
       child: SizedBox(
-        width: 108,
-        height: 50,
+        width: 126,
+        height: 48,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s8),
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
             decoration: BoxDecoration(
-              color: spec.color.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: spec.color.withOpacity(0.22)),
+              color: c.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: c.border),
             ),
-            child: Row(children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(color: spec.color, borderRadius: BorderRadius.circular(8)),
-                child: Icon(spec.icon, size: 17, color: Colors.white),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s8, vertical: AppSpacing.s8),
+              child: Row(
+                textDirection: TextDirection.rtl,
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: spec.color.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(spec.icon, size: 18, color: spec.color),
+                  ),
+                  const SizedBox(width: AppSpacing.s8),
+                  Expanded(
+                    child: Text(
+                      name,
+                      style: AppText.caption(c.textPrimary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.s8),
-              Expanded(
-                child: Text(
-                  name,
-                  style: AppText.caption(c.textPrimary),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ]),
+            ),
           ),
         ),
       ),
@@ -630,14 +638,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(height: AppSpacing.s8),
                   catsAsync.when(
                     loading: () => SizedBox(
-                      height: 64,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: List.generate(4, (_) => const SkeletonLoader(
-                          width: 76,
-                          height: 50,
-                          borderRadius: BorderRadius.all(Radius.circular(10)),
-                        )),
+                      height: 60,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                        itemCount: 4,
+                        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.s8),
+                        itemBuilder: (_, __) => const SkeletonLoader(
+                          width: 126,
+                          height: 48,
+                          borderRadius: BorderRadius.all(Radius.circular(14)),
+                        ),
                       ),
                     ),
                     error: (_, __) => const SizedBox.shrink(),
@@ -645,7 +656,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       final shown = cats.take(6).toList();
                       if (shown.isEmpty) return const SizedBox.shrink();
                       return SizedBox(
-                        height: 64,
+                        height: 60,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),

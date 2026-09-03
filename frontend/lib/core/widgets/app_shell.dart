@@ -25,26 +25,23 @@ class _AppShellState extends ConsumerState<AppShell> {
       body: widget.child,
       bottomNavigationBar: SafeArea(
         top: false,
-        minimum: const EdgeInsets.fromLTRB(AppSpacing.s12, AppSpacing.s4, AppSpacing.s12, AppSpacing.s8),
         child: Container(
           decoration: BoxDecoration(
             color: c.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: c.border),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 3)),
-            ],
+            border: Border(top: BorderSide(color: c.border)),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Row(
-            textDirection: TextDirection.rtl,
-            children: [
-              _DockDestination(c: c, index: 0, currentIndex: widget.currentIndex, icon: Icons.home_outlined, activeIcon: Icons.home, label: 'الرئيسية', onTap: widget.onTap),
-              _DockDestination(c: c, index: 1, currentIndex: widget.currentIndex, icon: Icons.search_outlined, activeIcon: Icons.search, label: 'استكشف', onTap: widget.onTap),
-              _DockDestination(c: c, index: 2, currentIndex: widget.currentIndex, icon: Icons.event_note_outlined, activeIcon: Icons.event_note, label: 'حجوزاتي', onTap: widget.onTap),
-              _DockDestination(c: c, index: 3, currentIndex: widget.currentIndex, icon: Icons.shopping_bag_outlined, activeIcon: Icons.shopping_bag, label: 'طلباتي', onTap: widget.onTap),
-              _DockDestination(c: c, index: 4, currentIndex: widget.currentIndex, icon: Icons.person_outline, activeIcon: Icons.person, label: 'حسابي', onTap: widget.onTap),
-            ],
+          child: SizedBox(
+            height: 72,
+            child: Row(
+              textDirection: TextDirection.rtl,
+              children: [
+                _DockDestination(c: c, index: 0, currentIndex: widget.currentIndex, icon: Icons.home_outlined, activeIcon: Icons.home, label: 'الرئيسية', onTap: widget.onTap),
+                _DockDestination(c: c, index: 1, currentIndex: widget.currentIndex, icon: Icons.search_outlined, activeIcon: Icons.search, label: 'استكشف', onTap: widget.onTap),
+                _DockDestination(c: c, index: 2, currentIndex: widget.currentIndex, icon: Icons.event_note_outlined, activeIcon: Icons.event_note, label: 'حجوزاتي', onTap: widget.onTap),
+                _DockDestination(c: c, index: 3, currentIndex: widget.currentIndex, icon: Icons.shopping_bag_outlined, activeIcon: Icons.shopping_bag, label: 'طلباتي', onTap: widget.onTap),
+                _DockDestination(c: c, index: 4, currentIndex: widget.currentIndex, icon: Icons.person_outline, activeIcon: Icons.person, label: 'حسابي', onTap: widget.onTap),
+              ],
+            ),
           ),
         ),
       ),
@@ -89,14 +86,15 @@ class _DockDestination extends StatelessWidget {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOut,
-                width: 46,
-                height: 34,
+                width: 28,
+                height: 3,
                 decoration: BoxDecoration(
-                  color: active ? c.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(11),
+                  color: active ? c.accent : Colors.transparent,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                child: Icon(active ? activeIcon : icon, size: 22, color: active ? c.surface : c.textMuted),
               ),
+              const SizedBox(height: AppSpacing.s4),
+              Icon(active ? activeIcon : icon, size: 27, color: active ? c.primary : c.textMuted),
               const SizedBox(height: 2),
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 180),

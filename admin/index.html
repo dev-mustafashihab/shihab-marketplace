@@ -1,37 +1,38 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html>
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>لوحة إدارة المنصة</title>
-<link rel="stylesheet" href="/mp-admin/assets/admin.css">
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/mp-admin/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="marketplace_app">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>marketplace_app</title>
+  <link rel="manifest" href="manifest.json">
 </head>
 <body>
-<div id="app">
-  <aside id="sidebar">
-    <div class="brand">
-      <div class="brand-mark">SM</div>
-      <div class="brand-name">سوق المناسبات<br><span>لوحة الإدارة</span></div>
-    </div>
-    <nav id="nav"></nav>
-    <div class="sidebar-footer">
-      <span id="api-status" class="api-dot" title="حالة الـ API"></span>
-      <span>حالة الـ API</span>
-    </div>
-  </aside>
-  <main id="main">
-    <header id="topbar">
-      <h1 id="page-title">لوحة التحكم</h1>
-      <div class="topbar-actions">
-        <input id="global-search" class="search-input" placeholder="بحث سريع…">
-      </div>
-    </header>
-    <section id="content" class="content"></section>
-  </main>
-</div>
-<div id="drawer-root"></div>
-<div id="dialog-root"></div>
-<div id="toast-root"></div>
-<script src="/mp-admin/assets/admin.js"></script>
+  <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
