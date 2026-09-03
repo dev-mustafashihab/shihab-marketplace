@@ -21,6 +21,7 @@ class SearchQueryDto {
   @IsOptional() @IsUUID() categoryId?: string;
   @IsOptional() @Type(() => Number) @IsNumber() minRating?: number;
   @IsOptional() @Type(() => Number) @IsNumber() maxPrice?: number;
+  @IsOptional() @IsIn(['USD', 'SYP', 'TRY']) currency?: string;
   @IsOptional() @Type(() => Number) @IsNumber() lat?: number;
   @IsOptional() @Type(() => Number) @IsNumber() lng?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0.1) @Max(100) radiusKm?: number;
@@ -44,6 +45,7 @@ export class SearchController {
       q: query.q,
       categoryId: query.categoryId,
       maxPrice: query.maxPrice,
+      currency: query.currency,
       lat: query.lat,
       lng: query.lng,
       radiusKm: query.radiusKm,

@@ -22,15 +22,16 @@ import '../../features/profile/profile_screen.dart';
 
 /// شريحة تصنيف أفقية — أيقونة صغيرة واسم + نقر يفتح الاستكشاف المفلتر.
 class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({required this.name, required this.slug, required this.onTap});
+  const _CategoryCard({required this.name, required this.slug, this.iconKey, required this.onTap});
   final String name;
   final String? slug;
+  final String? iconKey;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final spec = _catSpec(slug);
+    final spec = _catSpec(slug: slug, iconKey: iconKey);
     return Semantics(
       button: true,
       label: name,
@@ -78,6 +79,71 @@ class _CategoryCard extends StatelessWidget {
   }
 }
 
+/// شريحة «الكل» — تفتح الاستكشاف بلا فلترة تصنيف.
+class _CategoryAll extends StatelessWidget {
+  const _CategoryAll({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      label: 'الكل',
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 88, maxWidth: 220, minHeight: 48, maxHeight: 48),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: c.primary,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12, vertical: AppSpacing.s8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                textDirection: TextDirection.rtl,
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.explore_rounded, size: 18, color: Colors.white),
+                  ),
+                  const SizedBox(width: AppSpacing.s8),
+                  Text(
+                    'الكل',
+                    style: AppText.caption(Colors.white),
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// تسمية السعر بعملة البائع المرسلة من الـ API — لا `$` ثابتة.
+String _priceLabel(Map<String, dynamic> v) {
+  final price = v['minPrice'];
+  final cur = switch ((v['currency'] as String?) ?? 'USD') {
+    'SYP' => 'ل.س',
+    'TRY' => 'ل.ت',
+    _ => 'دولار',
+  };
+  return 'من $price $cur';
+}
+
 /// مواصفات التصنيف: أيقونة + لون مميز.
 class _CatSpec {
   const _CatSpec(this.icon, this.color);
@@ -85,7 +151,22 @@ class _CatSpec {
   final Color color;
 }
 
-_CatSpec _catSpec(String? slug) {
+_CatSpec _catSpec({String? slug, String? iconKey}) {
+  // iconKey القادم من الباكند أولاً، ثم slug، ثم الافتراضي
+  switch (iconKey) {
+    case 'venue':
+      return _CatSpec(Icons.account_balance_rounded, const Color(0xFF8E7CC3));
+    case 'salon':
+      return _CatSpec(Icons.content_cut_rounded, const Color(0xFFE58BA5));
+    case 'restaurant':
+      return _CatSpec(Icons.restaurant_rounded, const Color(0xFFE09F5A));
+    case 'gift':
+      return _CatSpec(Icons.card_giftcard_rounded, const Color(0xFF64B5A4));
+    case 'pool':
+      return _CatSpec(Icons.pool_rounded, const Color(0xFF5A9BD5));
+    case 'camera':
+      return _CatSpec(Icons.photo_camera_rounded, const Color(0xFFB08968));
+  }
   // الألوان ثابتة (بلا context) — درجات متناسقة مع الهوية
   switch (slug) {
     case 'venues':
@@ -285,12 +366,23 @@ class _VendorProximityCard extends ConsumerWidget {
                 Expanded(child: Text(v['name'] as String? ?? '',
                     style: AppText.headingS(c.textPrimary),
                     maxLines: 1, overflow: TextOverflow.ellipsis)),
+                if (v['isOpen'] == true) ...[
+                  const SizedBox(width: AppSpacing.s4),
+                  Tooltip(
+                    message: 'مفتوح الآن',
+                    child: Container(
+                      width: 9, height: 9,
+                      decoration: BoxDecoration(color: c.success, shape: BoxShape.circle),
+                    ),
+                  ),
+                ],
                 // التقييم يظهر فقط إن وُجد (لا نجمة صفر محرجة)
                 if (((v['averageRating'] as num?) ?? 0) > 0) ...[
                   const SizedBox(width: AppSpacing.s4),
                   Icon(Icons.star_rounded, size: 16, color: c.accent),
                   const SizedBox(width: 2),
-                  Text('${v['averageRating']}', style: AppText.caption(c.textSecondary)),
+                  Text('${v['averageRating']} (${v['reviewsCount'] ?? v['reviewCount'] ?? 0})',
+                      style: AppText.caption(c.textSecondary)),
                 ],
               ]),
               const SizedBox(height: AppSpacing.s4),
@@ -329,7 +421,7 @@ class _VendorProximityCard extends ConsumerWidget {
                       color: c.primary.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text('من ${v['minPrice']} \$',
+                    child: Text(_priceLabel(v),
                         style: AppText.caption(c.primary)),
                   ),
               ]),
@@ -652,20 +744,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     error: (_, __) => const SizedBox.shrink(),
                     data: (cats) {
-                      final shown = cats.take(6).toList();
+                      final shown = cats.toList();
                       if (shown.isEmpty) return const SizedBox.shrink();
                       return SizedBox(
                         height: 60,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                          itemCount: shown.length,
+                          itemCount: shown.length + 1,
                           separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.s8),
                           itemBuilder: (context, i) {
-                            final cat = shown[i];
+                            if (i == 0) {
+                              return _CategoryAll(
+                                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (_) => const ExploreScreen(),
+                                )),
+                              );
+                            }
+                            final cat = shown[i - 1];
                             return _CategoryCard(
                               name: (cat['nameAr'] ?? '') as String,
                               slug: cat['slug'] as String?,
+                              iconKey: cat['iconKey'] as String?,
                               onTap: () => Navigator.of(context).push(MaterialPageRoute(
                                 builder: (_) => ExploreScreen(categoryId: cat['id'] as String),
                               )),
@@ -709,6 +809,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         title: 'لا يوجد بائعون بعد',
                         message: 'البائعون القريبون منك سيظهرون هنا.',
                         actionLabel: 'استكشف الخدمات',
+                        onAction: () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const ExploreScreen(),
+                        )),
                       ));
                     }
                     return SliverList.separated(

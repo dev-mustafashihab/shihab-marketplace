@@ -7,6 +7,7 @@ export interface SearchFilters {
   categoryId?: string;
   minRating?: number;
   maxPrice?: number;
+  currency?: string;
   lat?: number;
   lng?: number;
   radiusKm?: number;
@@ -59,7 +60,10 @@ export class SearchService {
     }
     if (f.maxPrice !== undefined) {
       conditions.push(`COALESCE(v.min_price, 0) <= ${bind(f.maxPrice)}`);
-
+    }
+    // الفلترة المزدوجة: السعر يُقارن ضمن عملته فقط — بلا معنى عبر العملات
+    if (f.currency !== undefined) {
+      conditions.push(`v.currency = ${bind(f.currency)}`);
     }
     if (f.capacity !== undefined) {
       conditions.push(`EXISTS (SELECT 1 FROM resources r WHERE r.vendor_id = v.id AND r.is_active AND r.capacity >= ${bind(f.capacity)})`);
@@ -136,7 +140,7 @@ export class SearchService {
       category: r.category_name_ar,
       averageRating: Number(r.average_rating ?? 0),
       reviewsCount: Number(r.reviews_count ?? 0),
-      distanceKm: r.distance_m != null ? Math.round(Number(r.distance_m)) / 1000 : null,
+      distanceKm: r.distance_m != null ? Math.round(Number(r.distance_m) / 100) / 10 : null,
     }));
 
     return {

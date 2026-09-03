@@ -85,7 +85,11 @@ class _HomeSearchSheetState extends ConsumerState<_HomeSearchSheet> {
     final query = <String, String>{
       'q': _query,
       'limit': '12',
-      if (_maxPrice != null) 'maxPrice': _maxPrice!.round().toString(),
+      // الفلترة المزدوجة: العملة تُرسل مع السعر فقط
+      if (_maxPrice != null) ...{
+        'maxPrice': _maxPrice!.round().toString(),
+        'currency': _currency,
+      },
     };
     final d = await ref.read(apiClientProvider).get('/search', query: query);
     final raw = d is List

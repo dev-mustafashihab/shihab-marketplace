@@ -98,4 +98,48 @@ void main() {
     expect(find.text('قصر الأمل'), findsAtLeastNWidgets(1));
     expect(queries.any((query) => query['q'] == 'قصر'), isTrue);
   });
+
+  testWidgets('category pill opens explore filtered by that category', (tester) async {
+    final searchQueries = <Map<String, String>>[];
+    final api = ApiClient(
+      baseUrl: 'https://example.test',
+      client: MockClient((request) async {
+        final path = request.url.path;
+        if (path.endsWith('/categories')) {
+          return Response(
+            jsonEncode({
+              'success': true,
+              'data': [
+                {'id': 'cat-1', 'nameAr': 'قاعات', 'slug': 'venues', 'iconKey': 'venue'},
+                {'id': 'cat-2', 'nameAr': 'مطاعم', 'slug': 'restaurants', 'iconKey': 'restaurant'},
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        if (path.endsWith('/search')) {
+          searchQueries.add(request.url.queryParameters);
+        }
+        return Response(
+          jsonEncode({'success': true, 'data': []}),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [apiClientProvider.overrideWithValue(api)],
+        child: const MarketplaceApp(),
+      ),
+    );
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+
+    await tester.tap(find.text('قاعات'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('استكشف'), findsOneWidget);
+    expect(searchQueries.any((query) => query['categoryId'] == 'cat-1'), isTrue);
+  });
 }
