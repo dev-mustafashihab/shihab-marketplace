@@ -20,12 +20,13 @@ import '../../features/explore/explore_screen.dart';
 import '../../features/orders/orders_screen.dart';
 import '../../features/profile/profile_screen.dart';
 
-/// شريحة تصنيف أفقية — أيقونة صغيرة واسم + نقر يفتح الاستكشاف المفلتر.
+/// شريحة تصنيف رفيعة — أيقونة صغيرة واسم، تُفلتر الرئيسية مكانها.
 class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({required this.name, required this.slug, this.iconKey, required this.onTap});
+  const _CategoryCard({required this.name, required this.slug, this.iconKey, this.selected = false, required this.onTap});
   final String name;
   final String? slug;
   final String? iconKey;
+  final bool selected;
   final VoidCallback onTap;
 
   @override
@@ -34,32 +35,33 @@ class _CategoryCard extends StatelessWidget {
     final spec = _catSpec(slug: slug, iconKey: iconKey);
     return Semantics(
       button: true,
+      selected: selected,
       label: name,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 88, maxWidth: 220, minHeight: 48, maxHeight: 48),
+        constraints: const BoxConstraints(minWidth: 80, maxWidth: 220, minHeight: 40, maxHeight: 40),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(10),
           child: Ink(
             decoration: BoxDecoration(
-              color: c.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: c.border),
+              color: selected ? c.primary.withOpacity(0.12) : c.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: selected ? c.primary : c.border, width: selected ? 1.5 : 1),
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12, vertical: AppSpacing.s8),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s8, vertical: AppSpacing.s4),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 textDirection: TextDirection.rtl,
                 children: [
                   Container(
-                    width: 28,
-                    height: 28,
+                    width: 24,
+                    height: 24,
                     decoration: BoxDecoration(
                       color: spec.color.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(7),
                     ),
-                    child: Icon(spec.icon, size: 18, color: spec.color),
+                    child: Icon(spec.icon, size: 16, color: spec.color),
                   ),
                   const SizedBox(width: AppSpacing.s8),
                   Text(
@@ -79,46 +81,50 @@ class _CategoryCard extends StatelessWidget {
   }
 }
 
-/// شريحة «الكل» — تفتح الاستكشاف بلا فلترة تصنيف.
+/// شريحة «الكل» — تُظهر كل التصنيفات بلا فلترة.
 class _CategoryAll extends StatelessWidget {
-  const _CategoryAll({required this.onTap});
+  const _CategoryAll({required this.onTap, this.selected = true});
   final VoidCallback onTap;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Semantics(
       button: true,
+      selected: selected,
       label: 'الكل',
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 88, maxWidth: 220, minHeight: 48, maxHeight: 48),
+        constraints: const BoxConstraints(minWidth: 80, maxWidth: 220, minHeight: 40, maxHeight: 40),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(10),
           child: Ink(
             decoration: BoxDecoration(
-              color: c.primary,
-              borderRadius: BorderRadius.circular(14),
+              color: selected ? c.primary : c.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: selected ? c.primary : c.border),
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12, vertical: AppSpacing.s8),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s8, vertical: AppSpacing.s4),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 textDirection: TextDirection.rtl,
                 children: [
                   Container(
-                    width: 28,
-                    height: 28,
+                    width: 24,
+                    height: 24,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
+                      color: (selected ? Colors.white : c.primary).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(7),
                     ),
-                    child: const Icon(Icons.explore_rounded, size: 18, color: Colors.white),
+                    child: Icon(Icons.explore_rounded,
+                        size: 16, color: selected ? Colors.white : c.primary),
                   ),
                   const SizedBox(width: AppSpacing.s8),
                   Text(
                     'الكل',
-                    style: AppText.caption(Colors.white),
+                    style: AppText.caption(selected ? Colors.white : c.textPrimary),
                     maxLines: 1,
                     softWrap: false,
                     overflow: TextOverflow.ellipsis,
@@ -274,16 +280,26 @@ class _RootScaffoldState extends ConsumerState<RootScaffold> {
   }
 }
 
+/// التصنيف المختار في الرئيسية — null = الكل. الفلترة داخل الصفحة بلا انتقال.
+final homeCategoryProvider = StateProvider<String?>((ref) => null);
+
 /// بيانات الرئيسية — عند توفر موقع المستخدم: بحث جغرافي PostGIS مرتب بالأقرب (50 كم)
-/// وإلا: قائمة مميزة عامة.
+/// وإلا: قائمة مميزة عامة. يحترم التصنيف المختار في الصفحة نفسها.
 final homeVendorsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final me = ref.watch(userLocationProvider);
   final api = ref.watch(apiClientProvider);
+  final catId = ref.watch(homeCategoryProvider);
   final List<Map<String, dynamic>> rows;
   if (me != null) {
     final d = await api.get(
       '/search',
-      query: {'lat': me.lat.toStringAsFixed(6), 'lng': me.lng.toStringAsFixed(6), 'radiusKm': '50', 'limit': '10'},
+      query: {
+        'lat': me.lat.toStringAsFixed(6),
+        'lng': me.lng.toStringAsFixed(6),
+        'radiusKm': '50',
+        'limit': '10',
+        if (catId != null) 'categoryId': catId,
+      },
     );
     final raw = d is List
         ? d
@@ -300,7 +316,10 @@ final homeVendorsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>
     });
     return rows;
   }
-  final d = await api.get('/vendors?limit=10');
+  final d = await api.get('/vendors', query: {
+    'limit': '10',
+    if (catId != null) 'categoryId': catId,
+  });
   final raw = d is List
       ? d
       : (d is Map && d['data'] is List ? d['data'] as List : <dynamic>[]);
@@ -724,30 +743,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(height: AppSpacing.s20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                    child: Text('التصنيفات', style: AppText.headingM(c.textPrimary)),
+                    child: Row(children: [
+                      Text('التصنيفات', style: AppText.headingM(c.textPrimary)),
+                      const Spacer(),
+                      if (ref.watch(homeCategoryProvider) != null)
+                        TextButton(
+                          onPressed: () => ref.read(homeCategoryProvider.notifier).state = null,
+                          child: const Text('مسح الفلتر'),
+                        ),
+                    ]),
                   ),
                   const SizedBox(height: AppSpacing.s8),
                   catsAsync.when(
                     loading: () => SizedBox(
-                      height: 60,
+                      height: 52,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
                         itemCount: 4,
                         separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.s8),
                         itemBuilder: (_, __) => const SkeletonLoader(
-                          width: 126,
-                          height: 48,
-                          borderRadius: BorderRadius.all(Radius.circular(14)),
+                          width: 110,
+                          height: 40,
+                          borderRadius: BorderRadius.all(Radius.circular(10)),
                         ),
                       ),
                     ),
                     error: (_, __) => const SizedBox.shrink(),
                     data: (cats) {
                       final shown = cats.toList();
+                      final activeId = ref.watch(homeCategoryProvider);
                       if (shown.isEmpty) return const SizedBox.shrink();
                       return SizedBox(
-                        height: 60,
+                        height: 52,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
@@ -756,19 +784,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           itemBuilder: (context, i) {
                             if (i == 0) {
                               return _CategoryAll(
-                                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (_) => const ExploreScreen(),
-                                )),
+                                selected: activeId == null,
+                                onTap: () => ref.read(homeCategoryProvider.notifier).state = null,
                               );
                             }
                             final cat = shown[i - 1];
+                            final id = cat['id'] as String;
                             return _CategoryCard(
                               name: (cat['nameAr'] ?? '') as String,
                               slug: cat['slug'] as String?,
                               iconKey: cat['iconKey'] as String?,
-                              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                                builder: (_) => ExploreScreen(categoryId: cat['id'] as String),
-                              )),
+                              selected: activeId == id,
+                              onTap: () => ref.read(homeCategoryProvider.notifier).state =
+                                  activeId == id ? null : id,
                             );
                           },
                         ),
@@ -803,15 +831,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     onRetry: () { ref.invalidate(homeVendorsProvider); },
                   )),
                   data: (vendors) {
+                    final filtered = ref.watch(homeCategoryProvider) != null;
                     if (vendors.isEmpty) {
                       return SliverToBoxAdapter(child: EmptyState(
                         icon: Icons.store_mall_directory_outlined,
-                        title: 'لا يوجد بائعون بعد',
-                        message: 'البائعون القريبون منك سيظهرون هنا.',
-                        actionLabel: 'استكشف الخدمات',
-                        onAction: () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => const ExploreScreen(),
-                        )),
+                        title: filtered ? 'لا نتائج في هذا التصنيف' : 'لا يوجد بائعون بعد',
+                        message: filtered
+                            ? 'جرّب تصنيفاً آخر أو اعرض الكل.'
+                            : 'البائعون القريبون منك سيظهرون هنا.',
+                        actionLabel: filtered ? 'عرض الكل' : 'استكشف الخدمات',
+                        onAction: filtered
+                            ? () => ref.read(homeCategoryProvider.notifier).state = null
+                            : () => Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (_) => const ExploreScreen(),
+                                )),
                       ));
                     }
                     return SliverList.separated(

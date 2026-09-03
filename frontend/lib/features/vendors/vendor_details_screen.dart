@@ -9,6 +9,13 @@ import '../../core/theme/app_typography.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/skeleton_loader.dart';
 
+/// اسم العملة بالعربية — بدل `$` الثابتة.
+String _curName(String? code) => switch (code) {
+      'SYP' => 'ل.س',
+      'TRY' => 'ل.ت',
+      _ => 'دولار',
+    };
+
 /// صفحة البائع (من البحث) + CTA حجز → BookingSheet.
 class VendorDetailsScreen extends ConsumerStatefulWidget {
   const VendorDetailsScreen({super.key, required this.idOrSlug});
@@ -95,7 +102,7 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen> {
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(s['name'] as String, style: AppText.headingS(c.textPrimary)),
                           const SizedBox(height: AppSpacing.s4),
-                          Text('من \$${s['price']}', style: AppText.price(c.primary)),
+                          Text('من ${s['price']} ${_curName(s['currency'] as String?)}', style: AppText.price(c.primary)),
                         ]),
                       )),
                 ]),
@@ -245,7 +252,7 @@ class _BookingSheetState extends ConsumerState<BookingSheet> {
             )),
           ]),
           const SizedBox(height: AppSpacing.s12),
-          Text('السعر: \$${widget.service['price']} ${widget.service['currency'] ?? ''}',
+          Text('السعر: ${widget.service['price']} ${_curName(widget.service['currency'] as String?)}',
               style: AppText.bodyL(c.textPrimary)),
           const SizedBox(height: AppSpacing.s4),
           Text('أيام العمل: الجمعة والسبت — 9:00 حتى 24:00',

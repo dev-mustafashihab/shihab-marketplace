@@ -99,8 +99,8 @@ void main() {
     expect(queries.any((query) => query['q'] == 'قصر'), isTrue);
   });
 
-  testWidgets('category pill opens explore filtered by that category', (tester) async {
-    final searchQueries = <Map<String, String>>[];
+  testWidgets('category pill filters home vendors in place without navigation', (tester) async {
+    final vendorQueries = <Map<String, String>>[];
     final api = ApiClient(
       baseUrl: 'https://example.test',
       client: MockClient((request) async {
@@ -118,8 +118,8 @@ void main() {
             headers: {'content-type': 'application/json'},
           );
         }
-        if (path.endsWith('/search')) {
-          searchQueries.add(request.url.queryParameters);
+        if (path.endsWith('/vendors')) {
+          vendorQueries.add(request.url.queryParameters);
         }
         return Response(
           jsonEncode({'success': true, 'data': []}),
@@ -136,10 +136,25 @@ void main() {
     );
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
+    // ما زلنا في الرئيسية ولم ننتقل لاستكشف
+    expect(find.text('التصنيفات'), findsOneWidget);
+    expect(find.text('مسح الفلتر'), findsNothing);
+
     await tester.tap(find.text('قاعات'));
     await tester.pumpAndSettle();
 
-    expect(find.text('استكشف'), findsOneWidget);
-    expect(searchQueries.any((query) => query['categoryId'] == 'cat-1'), isTrue);
+    // الفلترة أُرسلت للباكند، وما زلنا في نفس الصفحة مع زر المسح
+    expect(vendorQueries.any((query) => query['categoryId'] == 'cat-1'), isTrue);
+    expect(find.text('التصنيفات'), findsOneWidget);
+    expect(find.text('مسح الفلتر'), findsOneWidget);
+    expect(find.text('لا نتائج في هذا التصنيف'), findsOneWidget);
+
+    // مسح الفلتر يعيد الكل
+    await tester.ensureVisible(find.text('عرض الكل'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('عرض الكل'));
+    await tester.pumpAndSettle();
+    expect(find.text('مسح الفلتر'), findsNothing);
+    expect(vendorQueries.last.containsKey('categoryId'), isFalse);
   });
 }
