@@ -1,0 +1,1 @@
+{"success":false,"message":"Validation failed","code":"VALIDATION_ERROR","errors":[{"message":"currency must be one of the following values: USD, SYP, TRY"}]}
