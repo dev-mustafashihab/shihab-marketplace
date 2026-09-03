@@ -15,9 +15,12 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
-  ApiClient({required this.baseUrl, this.token});
+  ApiClient({required this.baseUrl, this.token, this.onAuthLost});
   final String baseUrl;
   final String? token;
+
+  /// يُستدعى مرة عند موت الجلسة (401 + فشل التجديد) ليعود التطبيق لحالة «سجّل الدخول».
+  final void Function()? onAuthLost;
 
   Future<dynamic> get(String path, {Map<String, String>? query}) async {
     var uri = Uri.parse('$baseUrl$path');
@@ -27,17 +30,17 @@ class ApiClient {
         ...query,
       });
     }
-    return _run(() => http.get(uri, headers: _headers()));
+    return _run(() => http.get(uri, headers: _headers()), path: path);
   }
 
   Future<dynamic> post(String path, {Object? body}) async {
     return _run(() => http.post(Uri.parse('$baseUrl$path'),
-        headers: _headers(), body: jsonEncode(body ?? {})));
+        headers: _headers(), body: jsonEncode(body ?? {})), path: path);
   }
 
   Future<dynamic> patch(String path, {Object? body}) async {
     return _run(() => http.patch(Uri.parse('$baseUrl$path'),
-        headers: _headers(), body: jsonEncode(body ?? {})));
+        headers: _headers(), body: jsonEncode(body ?? {})), path: path);
   }
 
   Map<String, String> _headers() => {
@@ -45,17 +48,22 @@ class ApiClient {
         if (token != null) 'Authorization': 'Bearer $token',
       };
 
-  Future<dynamic> _run(Future<http.Response> Function() fn, {bool retried = false}) async {
+  Future<dynamic> _run(Future<http.Response> Function() fn, {String path = '', bool retried = false}) async {
     final res = await fn().timeout(const Duration(seconds: 20));
     if (res.body.isEmpty) throw ApiException('لا يوجد اتصال بالخادم', status: res.statusCode);
     final json = jsonDecode(res.body) as Map<String, dynamic>;
 
     // 401 → جرّب تجديد الـ access عبر الـ refresh ثم أعد الطلب مرة واحدة
-    if (res.statusCode == 401 && !retried) {
+    // (طلب الدخول/التسجيل نفسه مستثنى — 401 فيه معناه بيانات خاطئة لا جلسة ميتة)
+    if (res.statusCode == 401 && !retried && token != null && !path.startsWith('/auth/')) {
       final newToken = await _tryRefresh();
       if (newToken != null) {
-        return _run(fn, retried: true);
+        return _run(fn, path: path, retried: true);
       }
+      // الجلسة ميتة فعلاً (لا refresh أو منتهي) → نظّفها كي تظهر شاشات «سجّل الدخول»
+      await SessionService.saveToken(null);
+      await SessionService.saveRefreshToken(null);
+      onAuthLost?.call();
     }
 
     if (res.statusCode >= 400 || json['success'] != true) {
@@ -103,5 +111,6 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(
     baseUrl: 'https://panel.fahd-car.cloud/mp-api/api/v1',
     token: ref.watch(sessionTokenProvider),
+    onAuthLost: () => ref.read(sessionTokenProvider.notifier).state = null,
   );
 });
