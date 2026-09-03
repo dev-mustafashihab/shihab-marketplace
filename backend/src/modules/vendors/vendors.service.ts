@@ -17,6 +17,7 @@ const VENDOR_CARD_SELECT = {
   minPrice: true,
   currency: true,
   isOpen: true,
+  phone: true,
   imageUrl: true,
   category: { select: { id: true, nameAr: true, slug: true } },
   reviews: { select: { rating: true } },
