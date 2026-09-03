@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -37,23 +35,8 @@ void main() async {
   final container = ProviderContainer();
   await SessionService.restore(container);
 
-  // تحديد الموقع تلقائياً عند الإقلاع إذا لم يُحدد سابقاً — بلا انتظار الواجهة.
-  // فاشل؟ لا مشكلة: الرئيسية تعمل بوضع «مميز لك» والمنتقي اليدوي متاح.
-  if (container.read(userLocationProvider) == null) {
-    unawaited(_autoLocate(container));
-  }
-
   runApp(UncontrolledProviderScope(
     container: container,
     child: const MarketplaceApp(),
   ));
-}
-
-Future<void> _autoLocate(ProviderContainer container) async {
-  try {
-    final ok = await acquireContainerLocation(container);
-    if (ok) {
-      container.read(userCityProvider.notifier).state = 'موقعي الحالي';
-    }
-  } catch (_) {}
 }

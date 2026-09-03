@@ -30,31 +30,41 @@ class _CategoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final spec = _catSpec(slug);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: 84,
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s8, horizontal: AppSpacing.s4),
-        decoration: BoxDecoration(
-          color: spec.color.withOpacity(0.10),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: spec.color.withOpacity(0.25)),
+    return Semantics(
+      button: true,
+      label: name,
+      child: SizedBox(
+        width: 104,
+        height: 64,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s8),
+            decoration: BoxDecoration(
+              color: spec.color.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: spec.color.withOpacity(0.28)),
+            ),
+            child: Row(children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(color: spec.color, borderRadius: BorderRadius.circular(10)),
+                child: Icon(spec.icon, size: 20, color: Colors.white),
+              ),
+              const SizedBox(width: AppSpacing.s8),
+              Expanded(
+                child: Text(
+                  name,
+                  style: AppText.caption(c.textPrimary),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ]),
+          ),
         ),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(color: spec.color, borderRadius: BorderRadius.circular(13)),
-            child: Icon(spec.icon, size: 24, color: Colors.white),
-          ),
-          const SizedBox(height: AppSpacing.s8),
-          SizedBox(
-            width: 78,
-            child: Text(name, style: AppText.caption(c.textPrimary),
-                maxLines: 2, textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis),
-          ),
-        ]),
       ),
     );
   }
@@ -321,35 +331,241 @@ class _QuickChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(17),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+    return Semantics(
+      button: true,
+      label: label,
+      child: SizedBox(
+        height: 48,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(17),
-          border: Border.all(color: color.withOpacity(0.35)),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(17),
+                border: Border.all(color: color.withOpacity(0.35)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(icon, size: 15, color: color),
+                const SizedBox(width: 5),
+                Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: color)),
+              ]),
+            ),
+          ),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 15, color: color),
-          const SizedBox(width: 5),
-          Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: color)),
+      ),
+    );
+  }
+}
+
+/// شريط البحث والفلاتر الذي يبقى مثبتاً أسفل الهيدر العلوي.
+class _HomeFilterBar extends StatelessWidget {
+  const _HomeFilterBar({
+    required this.c,
+    required this.onSearch,
+    required this.onOpenNow,
+    required this.onNearby,
+    required this.onLowestPrice,
+  });
+
+  final AppColors c;
+  final VoidCallback onSearch;
+  final VoidCallback onOpenNow;
+  final VoidCallback onNearby;
+  final VoidCallback onLowestPrice;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: c.background,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s8),
+        decoration: BoxDecoration(
+          color: c.background,
+          border: Border(bottom: BorderSide(color: c.border)),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Column(children: [
+          InkWell(
+            onTap: onSearch,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
+              height: 52,
+              decoration: BoxDecoration(
+                color: c.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: c.border),
+              ),
+              child: Row(children: [
+                Icon(Icons.search_rounded, size: 22, color: c.primary),
+                const SizedBox(width: AppSpacing.s12),
+                Expanded(
+                  child: Text(
+                    'قاعة أعراس؟ صالون؟ هدية؟',
+                    style: AppText.bodyM(c.textMuted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s8),
+                Icon(Icons.tune_rounded, size: 20, color: c.textMuted),
+              ]),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s4),
+          SizedBox(
+            height: 48,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+              children: [
+                _QuickChip(
+                  icon: Icons.schedule_rounded,
+                  label: 'مفتوح الآن',
+                  color: c.success,
+                  onTap: onOpenNow,
+                ),
+                const SizedBox(width: AppSpacing.s8),
+                _QuickChip(
+                  icon: Icons.near_me_rounded,
+                  label: 'الأقرب إليك',
+                  color: c.primary,
+                  onTap: onNearby,
+                ),
+                const SizedBox(width: AppSpacing.s8),
+                _QuickChip(
+                  icon: Icons.local_offer_rounded,
+                  label: 'الأقل سعراً',
+                  color: c.accent,
+                  onTap: onLowestPrice,
+                ),
+              ],
+            ),
+          ),
         ]),
       ),
     );
   }
 }
 
+class _HomeFilterHeaderDelegate extends SliverPersistentHeaderDelegate {
+  const _HomeFilterHeaderDelegate({required this.child, required this.height});
+
+  final Widget child;
+  final double height;
+
+  @override
+  double get minExtent => height;
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => child;
+
+  @override
+  bool shouldRebuild(covariant _HomeFilterHeaderDelegate oldDelegate) => true;
+}
+
 /// Home — كما في التصميم المعتمد (موقع/بحث/تصنيفات/عروض/قريب منك).
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  late final ScrollController _scrollController;
+  final ValueNotifier<double> _topOpacity = ValueNotifier<double>(1);
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController()..addListener(_handleScroll);
+  }
+
+  void _handleScroll() {
+    final opacity = (1 - (_scrollController.offset / 56)).clamp(0.0, 1.0);
+    if ((_topOpacity.value - opacity).abs() > 0.01) _topOpacity.value = opacity;
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
+    _topOpacity.dispose();
+    super.dispose();
+  }
+
+  void _openNearby(BuildContext context) {
+    if (ref.read(userLocationProvider) == null) {
+      showLocationPicker(context, ref);
+      return;
+    }
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => const ExploreScreen(nearby: true),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.colors;
     final vendorsAsync = ref.watch(homeVendorsProvider);
     final catsAsync = ref.watch(homeCategoriesProvider);
+    final topIdentity = Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, AppSpacing.s12, AppSpacing.screenH, 0),
+      child: Column(children: [
+        Row(children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Builder(builder: (context) {
+              final h = DateTime.now().hour;
+              final greet = h < 12 ? 'صباح الخير' : (h < 18 ? 'مساء النور' : 'مساء الخير');
+              return Text(greet, style: AppText.caption(c.textMuted));
+            }),
+            const SizedBox(height: AppSpacing.s4),
+            InkWell(
+              onTap: () => showLocationPicker(context, ref),
+              borderRadius: BorderRadius.circular(8),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.location_on_rounded, size: 20, color: c.primary),
+                const SizedBox(width: AppSpacing.s4),
+                Flexible(child: Text(ref.watch(userCityProvider),
+                    style: AppText.headingS(c.textPrimary),
+                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: c.textMuted),
+              ]),
+            ),
+          ])),
+          _BellButton(c: c),
+        ]),
+        const SizedBox(height: AppSpacing.s8),
+        Container(
+          height: 2,
+          width: 56,
+          decoration: BoxDecoration(color: c.accent, borderRadius: BorderRadius.circular(2)),
+        ),
+      ]),
+    );
+    final filterBar = _HomeFilterBar(
+      c: c,
+      onSearch: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ExploreScreen())),
+      onOpenNow: () => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => const ExploreScreen(openNow: true),
+      )),
+      onNearby: () => _openNearby(context),
+      onLowestPrice: () => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => const ExploreScreen(lowestPrice: true),
+      )),
+    );
+
     return Scaffold(
       backgroundColor: c.background,
       body: SafeArea(
@@ -360,134 +576,51 @@ class HomeScreen extends ConsumerWidget {
             ref.invalidate(homeCategoriesProvider);
           },
           child: CustomScrollView(
+            controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(
+                child: ValueListenableBuilder<double>(
+                  valueListenable: _topOpacity,
+                  child: topIdentity,
+                  builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
+                ),
+              ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _HomeFilterHeaderDelegate(child: filterBar, height: 124),
+              ),
+              SliverToBoxAdapter(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  // ==== الهيدر: تحية + موقع + إشعارات + خط ذهبي فاصل (الشكل القديم الأنظف + ميزات) ====
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, AppSpacing.s12, AppSpacing.screenH, 0),
-                    child: Column(children: [
-                      Row(children: [
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Builder(builder: (context) {
-                            final h = DateTime.now().hour;
-                            final greet = h < 12 ? 'صباح الخير' : (h < 18 ? 'مساء النور' : 'مساء الخير');
-                            return Text(greet, style: AppText.caption(c.textMuted));
-                          }),
-                          const SizedBox(height: AppSpacing.s4),
-                          InkWell(
-                            onTap: () => showLocationPicker(context, ref),
-                            borderRadius: BorderRadius.circular(8),
-                            child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(Icons.location_on_rounded, size: 20, color: c.primary),
-                              const SizedBox(width: AppSpacing.s4),
-                              Flexible(child: Text(ref.watch(userCityProvider),
-                                  style: AppText.headingS(c.textPrimary),
-                                  maxLines: 1, overflow: TextOverflow.ellipsis)),
-                              Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: c.textMuted),
-                            ]),
-                          ),
-                        ])),
-                        _BellButton(c: c),
-                      ]),
-                      const SizedBox(height: AppSpacing.s8),
-                      // خط ذهبي فاصل أنيق — لمسة الهوية
-                      Container(
-                        height: 2,
-                        width: 56,
-                        decoration: BoxDecoration(
-                          color: c.accent,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ]),
-                  ),
-                  const SizedBox(height: AppSpacing.s12),
-                  // شريط البحث الأصلي الأنيق (سطح فاتح بظل خفيف)
-                  InkWell(
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const ExploreScreen(),
-                    )),
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: c.surface,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: c.border),
-                        boxShadow: [BoxShadow(color: c.primary.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4))],
-                      ),
-                      child: Row(children: [
-                        Icon(Icons.search_rounded, size: 22, color: c.primary),
-                        const SizedBox(width: AppSpacing.s12),
-                        Text('قاعة أعراس؟ صالون؟ هدية؟', style: AppText.bodyM(c.textMuted)),
-                        const Spacer(),
-                        Icon(Icons.tune_rounded, size: 20, color: c.textMuted),
-                      ]),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.s12),
-                  // ==== الفلاتر السريعة: اختصارات ذكية بضغطة واحدة ====
-                  SizedBox(
-                    height: 34,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                      children: [
-                        _QuickChip(
-                          icon: Icons.schedule_rounded,
-                          label: 'مفتوح الآن',
-                          color: const Color(0xFF2E7D32),
-                          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => const ExploreScreen(openNow: true),
-                          )),
-                        ),
-                        const SizedBox(width: AppSpacing.s8),
-                        _QuickChip(
-                          icon: Icons.near_me_rounded,
-                          label: 'الأقرب إليك',
-                          color: c.primary,
-                          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => const ExploreScreen(),
-                          )),
-                        ),
-                        const SizedBox(width: AppSpacing.s8),
-                        _QuickChip(
-                          icon: Icons.local_offer_rounded,
-                          label: 'الأقل سعراً',
-                          color: c.accent,
-                          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => const ExploreScreen(),
-                          )),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.s24),
+                  const SizedBox(height: AppSpacing.s20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
                     child: Text('التصنيفات', style: AppText.headingM(c.textPrimary)),
                   ),
-                  const SizedBox(height: AppSpacing.s12),
+                  const SizedBox(height: AppSpacing.s8),
                   catsAsync.when(
-                    loading: () { return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: List.generate(4, (_) => const SkeletonLoader(width: 76, height: 84, borderRadius: BorderRadius.all(Radius.circular(16)))),
-                    ); },
+                    loading: () => SizedBox(
+                      height: 82,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: List.generate(4, (_) => const SkeletonLoader(
+                          width: 76,
+                          height: 72,
+                          borderRadius: BorderRadius.all(Radius.circular(14)),
+                        )),
+                      ),
+                    ),
                     error: (_, __) => const SizedBox.shrink(),
                     data: (cats) {
                       final shown = cats.take(6).toList();
                       if (shown.isEmpty) return const SizedBox.shrink();
                       return SizedBox(
-                        height: 108,
+                        height: 82,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
                           itemCount: shown.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.s12),
+                          separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.s8),
                           itemBuilder: (context, i) {
                             final cat = shown[i];
                             return _CategoryCard(
@@ -508,13 +641,8 @@ class HomeScreen extends ConsumerWidget {
                     child: Row(children: [
                       Icon(Icons.near_me_rounded, size: 16, color: c.primary),
                       const SizedBox(width: AppSpacing.s4),
-                      Builder(builder: (context) {
-                        final hasLoc = ref.watch(userLocationProvider) != null;
-                        return Text(hasLoc ? 'الأقرب إليك' : 'مميز لك',
-                            style: AppText.headingM(c.textPrimary));
-                      }),
-                      const Spacer(),
-                      Text('عرض الكل', style: AppText.caption(c.primary)),
+                      Text(ref.watch(userLocationProvider) != null ? 'الأقرب إليك' : 'مميز لك',
+                          style: AppText.headingM(c.textPrimary)),
                     ]),
                   ),
                   const SizedBox(height: AppSpacing.s12),
@@ -546,10 +674,7 @@ class HomeScreen extends ConsumerWidget {
                     return SliverList.separated(
                       itemCount: vendors.length,
                       separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s12),
-                      itemBuilder: (context, i) {
-                        final v = vendors[i];
-                        return _VendorProximityCard(v: v);
-                      },
+                      itemBuilder: (context, i) => _VendorProximityCard(v: vendors[i]),
                     );
                   },
                 ),

@@ -26,31 +26,47 @@ class _LocationSheet extends ConsumerStatefulWidget {
 class _LocationSheetState extends ConsumerState<_LocationSheet> {
   bool _locating = false;
   String? _error;
+  LocationFailureReason? _failureReason;
 
   Future<void> _useGps() async {
     setState(() { _locating = true; _error = null; });
-    final ok = await acquireLocation(ref);
+    final result = await acquireLocationResult(ref);
     if (!mounted) return;
-    if (ok) {
+    if (result.isSuccess) {
+      final fix = result.fix!;
       ref.read(userCityProvider.notifier).state = 'موقعي الحالي';
-      await SessionService.saveLocation(
-        ref.read(userLocationProvider)?.lat,
-        ref.read(userLocationProvider)?.lng,
-        'موقعي الحالي',
-      );
+      await SessionService.saveLocation(fix.latitude, fix.longitude, 'موقعي الحالي', source: LocationSource.gps);
       if (mounted) Navigator.of(context).pop();
     } else {
       setState(() {
         _locating = false;
-        _error = 'تعذّر تحديد موقعك — فعّل خدمة الموقع وامنح الصلاحية';
+        _failureReason = result.reason;
+        _error = _failureMessage(result.reason);
       });
+    }
+  }
+
+  String _failureMessage(LocationFailureReason? reason) => switch (reason) {
+        LocationFailureReason.permissionDenied => 'لم تسمح بصلاحية الموقع. اضغط الزر مرة أخرى للسماح.',
+        LocationFailureReason.permissionDeniedForever => 'صلاحية الموقع مرفوضة نهائياً. افتح إعدادات التطبيق وفعّلها.',
+        LocationFailureReason.serviceDisabled => 'خدمة الموقع مغلقة. فعّلها من إعدادات الجهاز.',
+        LocationFailureReason.timeout => 'لم يصل GPS خلال الوقت المحدد. انتقل لمكان مكشوف وحاول مجدداً.',
+        LocationFailureReason.unavailable || null => 'تعذّر قراءة GPS حالياً. تأكد من الإشارة وحاول مجدداً.',
+      };
+
+  Future<void> _openSettings() async {
+    final gateway = GeolocatorLocationGateway();
+    if (_failureReason == LocationFailureReason.permissionDeniedForever) {
+      await gateway.openAppSettings();
+    } else if (_failureReason == LocationFailureReason.serviceDisabled) {
+      await gateway.openLocationSettings();
     }
   }
 
   Future<void> _pickCity(String name, LatLng pos) async {
     ref.read(userLocationProvider.notifier).state = pos;
     ref.read(userCityProvider.notifier).state = name;
-    await SessionService.saveLocation(pos.lat, pos.lng, name);
+    await SessionService.saveLocation(pos.lat, pos.lng, name, source: LocationSource.manual);
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -87,6 +103,17 @@ class _LocationSheetState extends ConsumerState<_LocationSheet> {
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.s8),
             Text(_error!, style: AppText.caption(c.error), textAlign: TextAlign.center),
+            if (_failureReason == LocationFailureReason.permissionDeniedForever ||
+                _failureReason == LocationFailureReason.serviceDisabled) ...[
+              const SizedBox(height: AppSpacing.s4),
+              TextButton.icon(
+                onPressed: _openSettings,
+                icon: const Icon(Icons.settings_outlined, size: 17),
+                label: Text(_failureReason == LocationFailureReason.serviceDisabled
+                    ? 'فتح إعدادات الموقع'
+                    : 'فتح إعدادات التطبيق'),
+              ),
+            ],
           ],
           const SizedBox(height: AppSpacing.s16),
           Text('أو اختر مدينة', style: AppText.bodyL(c.textSecondary)),

@@ -1,12 +1,158 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 
 import '../network/api_client.dart';
+
+enum LocationSource { gps, manual }
+
+enum LocationPermissionState { denied, deniedForever, foreground, always }
+
+enum LocationFailureReason {
+  permissionDenied,
+  permissionDeniedForever,
+  serviceDisabled,
+  timeout,
+  unavailable,
+}
+
+class LocationFix {
+  const LocationFix({required this.latitude, required this.longitude, required this.accuracy});
+
+  final double latitude;
+  final double longitude;
+  final double accuracy;
+}
+
+class LocationResult {
+  const LocationResult.success(this.fix)
+      : source = LocationSource.gps,
+        reason = null;
+
+  const LocationResult.failure(this.reason)
+      : fix = null,
+        source = null;
+
+  final LocationFix? fix;
+  final LocationSource? source;
+  final LocationFailureReason? reason;
+  bool get isSuccess => fix != null;
+}
+
+abstract class LocationGateway {
+  Future<LocationPermissionState> checkPermission();
+  Future<LocationPermissionState> requestPermission();
+  Future<bool> isServiceEnabled();
+  Future<LocationFix> getCurrentPosition();
+  Future<LocationFix?> getLastKnownPosition();
+  Future<bool> openAppSettings();
+  Future<bool> openLocationSettings();
+}
+
+class GeolocatorLocationGateway implements LocationGateway {
+  @override
+  Future<LocationPermissionState> checkPermission() async {
+    return _mapPermission(await Geolocator.checkPermission());
+  }
+
+  @override
+  Future<LocationPermissionState> requestPermission() async {
+    return _mapPermission(await Geolocator.requestPermission());
+  }
+
+  @override
+  Future<bool> isServiceEnabled() => Geolocator.isLocationServiceEnabled();
+
+  @override
+  Future<LocationFix> getCurrentPosition() async {
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 25),
+      ),
+    );
+    return LocationFix(
+      latitude: position.latitude,
+      longitude: position.longitude,
+      accuracy: position.accuracy,
+    );
+  }
+
+  @override
+  Future<LocationFix?> getLastKnownPosition() async {
+    final position = await Geolocator.getLastKnownPosition();
+    if (position == null) return null;
+    return LocationFix(
+      latitude: position.latitude,
+      longitude: position.longitude,
+      accuracy: position.accuracy,
+    );
+  }
+
+  @override
+  Future<bool> openAppSettings() => Geolocator.openAppSettings();
+
+  @override
+  Future<bool> openLocationSettings() => Geolocator.openLocationSettings();
+
+  LocationPermissionState _mapPermission(LocationPermission permission) {
+    switch (permission) {
+      case LocationPermission.deniedForever:
+        return LocationPermissionState.deniedForever;
+      case LocationPermission.whileInUse:
+        return LocationPermissionState.foreground;
+      case LocationPermission.always:
+        return LocationPermissionState.always;
+      case LocationPermission.denied:
+      default:
+        return LocationPermissionState.denied;
+    }
+  }
+}
+
+class LocationService {
+  LocationService({LocationGateway? gateway}) : _gateway = gateway ?? GeolocatorLocationGateway();
+
+  final LocationGateway _gateway;
+
+  Future<LocationResult> locate() async {
+    var permission = await _gateway.checkPermission();
+    if (permission == LocationPermissionState.denied) {
+      permission = await _gateway.requestPermission();
+    }
+    if (permission == LocationPermissionState.deniedForever) {
+      return const LocationResult.failure(LocationFailureReason.permissionDeniedForever);
+    }
+    if (permission == LocationPermissionState.denied) {
+      return const LocationResult.failure(LocationFailureReason.permissionDenied);
+    }
+    if (!await _gateway.isServiceEnabled()) {
+      return const LocationResult.failure(LocationFailureReason.serviceDisabled);
+    }
+
+    var failure = LocationFailureReason.unavailable;
+    try {
+      return LocationResult.success(
+        await _gateway.getCurrentPosition().timeout(const Duration(seconds: 25)),
+      );
+    } on TimeoutException {
+      failure = LocationFailureReason.timeout;
+    } catch (_) {
+      failure = LocationFailureReason.unavailable;
+    }
+
+    // آخر موقع GPS معروف أفضل من تحويل موقع الشبكة إلى GPS وهمي.
+    try {
+      final last = await _gateway.getLastKnownPosition().timeout(const Duration(seconds: 3));
+      if (last != null) return LocationResult.success(last);
+    } catch (_) {
+      // نرجع سبب الفشل الأساسي للواجهة.
+    }
+    return LocationResult.failure(failure);
+  }
+}
 
 /// خدمة الجلسة الدائمة: حفظ التوكن + نقطة الموقع — الواجهة الموحدة للتبعية.
 class SessionService {
@@ -15,6 +161,7 @@ class SessionService {
   static const _kLat = 'sm_lat';
   static const _kLng = 'sm_lng';
   static const _kCity = 'sm_city';
+  static const _kLocationSource = 'sm_location_source';
 
   /// حمّل الجلسة المحفوظة عند إقلاع التطبيق.
   static Future<void> restore(ProviderContainer container) async {
@@ -24,13 +171,17 @@ class SessionService {
       if (token != null && token.isNotEmpty) {
         container.read(sessionTokenProvider.notifier).state = token;
       }
+      final city = prefs.getString(_kCity);
+      final source = prefs.getString(_kLocationSource);
       final lat = prefs.getDouble(_kLat);
       final lng = prefs.getDouble(_kLng);
-      if (lat != null && lng != null) {
+      final isKnownLocation = source == LocationSource.gps.name ||
+          source == LocationSource.manual.name ||
+          (source == null && city != null && city != 'موقعي الحالي');
+      if (lat != null && lng != null && isKnownLocation) {
         container.read(userLocationProvider.notifier).state = LatLng(lat: lat, lng: lng);
       }
-      final city = prefs.getString(_kCity);
-      if (city != null) {
+      if (city != null && !(source == null && city == 'موقعي الحالي')) {
         container.read(userCityProvider.notifier).state = city;
       }
     } catch (_) {
@@ -62,14 +213,21 @@ class SessionService {
     }
   }
 
-  static Future<void> saveLocation(double? lat, double? lng, String? city) async {
+  static Future<void> saveLocation(
+    double? lat,
+    double? lng,
+    String? city, {
+    LocationSource source = LocationSource.manual,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     if (lat == null || lng == null) {
       await prefs.remove(_kLat);
       await prefs.remove(_kLng);
+      await prefs.remove(_kLocationSource);
     } else {
       await prefs.setDouble(_kLat, lat);
       await prefs.setDouble(_kLng, lng);
+      await prefs.setString(_kLocationSource, source.name);
     }
     if (city == null) {
       await prefs.remove(_kCity);
@@ -91,64 +249,19 @@ final userLocationProvider = StateProvider<LatLng?>((ref) => null);
 /// اسم المدينة المعروض في الشريط العلوي
 final userCityProvider = StateProvider<String>((ref) => 'دمشق');
 
-/// جلب الموقع التقريبي عبر IP (يعمل بلا صلاحيات على كل المنصات)
-/// نسخة container للاستخدام عند الإقلاع (قبل وجود WidgetRef).
-Future<bool> acquireContainerLocation(ProviderContainer container) async {
-  return _acquire(
-    container.read,
-    (p) => container.read(userLocationProvider.notifier).state = p,
-  );
+/// طلب موقع GPS من الواجهة بعد ضغط المستخدم، بلا طلب صامت عند الإقلاع.
+Future<LocationResult> acquireLocationResult(WidgetRef ref, {LocationService? service}) async {
+  final result = await (service ?? LocationService()).locate();
+  final fix = result.fix;
+  if (fix != null) {
+    ref.read(userLocationProvider.notifier).state = LatLng(lat: fix.latitude, lng: fix.longitude);
+    await SessionService.saveLocation(fix.latitude, fix.longitude, null, source: LocationSource.gps);
+  }
+  return result;
 }
 
-/// سلسلة تحديد الموقع: (1) GPS ناتيف بدقة عالية (2) fallback عبر IP إن رُفض الإذن.
-/// تُرجع true فقط إذا وصل موقع مستخدم فعلاً.
 Future<bool> acquireLocation(WidgetRef ref) async {
-  return _acquire(ref.read, (p) => ref.read(userLocationProvider.notifier).state = p);
-}
-
-Future<bool> _acquire(
-  T Function<T>(ProviderListenable<T>) read,
-  void Function(LatLng) setLocation,
-) async {
-  // (1) GPS الحقيقي — الأدق والأسرع عند توفر الإذن
-  try {
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
-      final serviceOn = await Geolocator.isLocationServiceEnabled();
-      if (serviceOn) {
-        final pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 12)),
-        );
-        setLocation(LatLng(lat: pos.latitude, lng: pos.longitude));
-        await SessionService.saveLocation(pos.latitude, pos.longitude, null);
-        return true;
-      }
-    }
-  } catch (_) {
-    // GPS فشل → جرب IP
-  }
-  // (2) fallback: تقريب عبر IP
-  try {
-    final res = await http.get(
-      Uri.parse('https://ipapi.co/json/'),
-      headers: {'Accept': 'application/json'},
-    ).timeout(const Duration(seconds: 8));
-    if (res.statusCode != 200) return false;
-    final d = jsonDecode(res.body) as Map<String, dynamic>;
-    final lat = d['latitude'];
-    final lng = d['longitude'];
-    if (lat is num && lng is num) {
-      setLocation(LatLng(lat: lat.toDouble(), lng: lng.toDouble()));
-      await SessionService.saveLocation(lat.toDouble(), lng.toDouble(), null);
-      return true;
-    }
-    return false;
-  } catch (_) {
-    return false;
-  }
+  return (await acquireLocationResult(ref)).isSuccess;
 }
 
 /// إحداثيات مدن سوريا الرئيسية — للاختيار اليدوي
