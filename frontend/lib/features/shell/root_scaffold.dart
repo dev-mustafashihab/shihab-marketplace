@@ -163,12 +163,37 @@ class _RootScaffoldState extends ConsumerState<RootScaffold> {
   }
 }
 
-/// بيانات الرئيسية — FutureProvider يعاد إنشاؤه تلقائياً عند الإبطال.
+/// بيانات الرئيسية — عند توفر موقع المستخدم: بحث جغرافي PostGIS مرتب بالأقرب (50 كم)
+/// وإلا: قائمة مميزة عامة.
 final homeVendorsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final d = await ref.watch(apiClientProvider).get('/vendors?limit=10');
-  if (d is List) return d.cast<Map<String, dynamic>>();
-  if (d is Map && d['data'] is List) return (d['data'] as List).cast<Map<String, dynamic>>();
-  return const <Map<String, dynamic>>[];
+  final me = ref.watch(userLocationProvider);
+  final api = ref.watch(apiClientProvider);
+  final List<Map<String, dynamic>> rows;
+  if (me != null) {
+    final d = await api.get(
+      '/search',
+      query: {'lat': me.lat.toStringAsFixed(6), 'lng': me.lng.toStringAsFixed(6), 'radiusKm': '50', 'limit': '10'},
+    );
+    final raw = d is List
+        ? d
+        : (d is Map && d['data'] is List ? d['data'] as List : <dynamic>[]);
+    rows = raw
+        .whereType<Map>()
+        .map((m) => Map<String, dynamic>.from(m))
+        .toList();
+    // الـ API يرتب بالأقرب أصلاً (ORDER BY distance) — ترتيب وقائي على نسخة قابلة للتعديل
+    rows.sort((a, b) {
+      final da = (a['distanceKm'] as num?)?.toDouble() ?? double.infinity;
+      final db = (b['distanceKm'] as num?)?.toDouble() ?? double.infinity;
+      return da.compareTo(db);
+    });
+    return rows;
+  }
+  final d = await api.get('/vendors?limit=10');
+  final raw = d is List
+      ? d
+      : (d is Map && d['data'] is List ? d['data'] as List : <dynamic>[]);
+  return raw.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
 });
 
 final homeCategoriesProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
@@ -176,6 +201,115 @@ final homeCategoriesProvider = FutureProvider.autoDispose<List<Map<String, dynam
   if (d is List) return d.cast<Map<String, dynamic>>();
   return const <Map<String, dynamic>>[];
 });
+
+/// بطاقة بائع — تصميم أفقي مدمج: صورة 92px + معلومات + شارة مسافة بارزة.
+/// المسافة تظهر فقط عند توفر موقع المستخدم — وإلا شارة «مميز».
+class _VendorProximityCard extends ConsumerWidget {
+  const _VendorProximityCard({required this.v});
+  final Map<String, dynamic> v;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
+    // المسافة جاهزة من الـ API عند البحث الجغرافي (distanceKm رقم كم) — لا حساب محلي
+    final dKm = (v['distanceKm'] as num?)?.toDouble();
+    final dist = dKm != null ? '${dKm.toStringAsFixed(dKm < 1 ? 0 : 1)} كم' : null;
+
+    return InkWell(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => VendorDetailsScreen(idOrSlug: v['slug'] as String? ?? v['id'] as String),
+      )),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.s12),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: c.border),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Row(children: [
+          // الصورة — مربعة مستديرة
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: v['imageUrl'] != null
+                ? CachedNetworkImage(
+                    imageUrl: 'https://panel.fahd-car.cloud${v['imageUrl']}',
+                    width: 92, height: 92, fit: BoxFit.cover,
+                    placeholder: (_, __) => Container(width: 92, height: 92, color: c.primary.withOpacity(0.06)),
+                    errorWidget: (_, __, ___) => Container(
+                      width: 92, height: 92, color: c.primary.withOpacity(0.06),
+                      child: Icon(Icons.storefront_outlined, size: 32, color: c.primary.withOpacity(0.4)),
+                    ),
+                  )
+                : Container(
+                    width: 92, height: 92, color: c.primary.withOpacity(0.06),
+                    child: Icon(Icons.storefront_outlined, size: 32, color: c.primary.withOpacity(0.5)),
+                  ),
+          ),
+          const SizedBox(width: AppSpacing.s12),
+          // المعلومات
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(child: Text(v['name'] as String? ?? '',
+                    style: AppText.headingS(c.textPrimary),
+                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+                // التقييم يظهر فقط إن وُجد (لا نجمة صفر محرجة)
+                if (((v['averageRating'] as num?) ?? 0) > 0) ...[
+                  const SizedBox(width: AppSpacing.s4),
+                  Icon(Icons.star_rounded, size: 16, color: c.accent),
+                  const SizedBox(width: 2),
+                  Text('${v['averageRating']}', style: AppText.caption(c.textSecondary)),
+                ],
+              ]),
+              const SizedBox(height: AppSpacing.s4),
+              Text(v['description'] as String? ?? '',
+                  style: AppText.caption(c.textSecondary),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: AppSpacing.s8),
+              Row(children: [
+                // شارة المسافة أو «مميز»
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: dist != null ? c.primary.withOpacity(0.08) : c.accent.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(dist != null ? Icons.near_me_rounded : Icons.workspace_premium_rounded,
+                        size: 12, color: dist != null ? c.primary : c.accent),
+                    const SizedBox(width: 3),
+                    Text(dist ?? 'مميز',
+                        style: AppText.caption(dist != null ? c.primary : c.accent)),
+                  ]),
+                ),
+                const SizedBox(width: AppSpacing.s8),
+                Icon(Icons.place_outlined, size: 12, color: c.textMuted),
+                const SizedBox(width: 2),
+                Expanded(child: Text((v['address'] ?? '') as String,
+                    style: AppText.caption(c.textMuted),
+                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+                const SizedBox(width: AppSpacing.s4),
+                // السعر أدنى اليمين
+                if (v['minPrice'] != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: c.primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text('من ${v['minPrice']} \$',
+                        style: AppText.caption(c.primary)),
+                  ),
+              ]),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
 
 /// Home — كما في التصميم المعتمد (موقع/بحث/تصنيفات/عروض/قريب منك).
 class HomeScreen extends ConsumerWidget {
@@ -200,56 +334,70 @@ class HomeScreen extends ConsumerWidget {
             slivers: [
               SliverToBoxAdapter(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, AppSpacing.s12, AppSpacing.screenH, 0),
-                    child: Row(children: [
-                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Builder(builder: (context) {
-                          final h = DateTime.now().hour;
-                          final greet = h < 12 ? 'صباح الخير' : (h < 18 ? 'مساء النور' : 'مساء الخير');
-                          return Text(greet, style: AppText.caption(c.textMuted));
-                        }),
-                        const SizedBox(height: AppSpacing.s4),
-                        InkWell(
-                          onTap: () => showLocationPicker(context, ref),
-                          borderRadius: BorderRadius.circular(8),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(Icons.location_on_rounded, size: 20, color: c.primary),
-                            const SizedBox(width: AppSpacing.s4),
-                            Flexible(child: Text(ref.watch(userCityProvider),
-                                style: AppText.headingS(c.textPrimary),
-                                maxLines: 1, overflow: TextOverflow.ellipsis)),
-                            Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: c.textMuted),
+                  // ==== الهيرو: تدرج نيلي عميق يحتضن التحية + الموقع + البحث ====
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(AppSpacing.screenH, AppSpacing.s12, AppSpacing.screenH, 0),
+                    padding: const EdgeInsets.all(AppSpacing.s16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      gradient: LinearGradient(
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                        colors: [c.primary, c.primary.withOpacity(0.82)],
+                      ),
+                      boxShadow: [BoxShadow(color: c.primary.withOpacity(0.25), blurRadius: 18, offset: const Offset(0, 8))],
+                    ),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Builder(builder: (context) {
+                              final h = DateTime.now().hour;
+                              final greet = h < 12 ? 'صباح الخير ☀' : (h < 18 ? 'مساء النور' : 'مساء الخير');
+                              return Text(greet,
+                                  style: AppText.caption(Colors.white.withOpacity(0.75)));
+                            }),
+                            const SizedBox(height: AppSpacing.s4),
+                            InkWell(
+                              onTap: () => showLocationPicker(context, ref),
+                              borderRadius: BorderRadius.circular(8),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                Icon(Icons.location_on_rounded, size: 20, color: c.accent),
+                                const SizedBox(width: AppSpacing.s4),
+                                Flexible(child: Text(ref.watch(userCityProvider),
+                                    style: AppText.headingS(Colors.white),
+                                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.white.withOpacity(0.7)),
+                              ]),
+                            ),
                           ]),
                         ),
-                      ])),
-                      _BellButton(c: c),
-                    ]),
-                  ),
-                  const SizedBox(height: AppSpacing.s12),
-                  InkWell(
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const ExploreScreen(),
-                    )),
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: c.surface,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: c.border),
-                        boxShadow: [BoxShadow(color: c.primary.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4))],
-                      ),
-                      child: Row(children: [
-                        Icon(Icons.search_rounded, size: 22, color: c.primary),
-                        const SizedBox(width: AppSpacing.s12),
-                        Text('قاعة أعراس؟ صالون؟ هدية؟', style: AppText.bodyM(c.textMuted)),
-                        const Spacer(),
-                        Icon(Icons.tune_rounded, size: 20, color: c.textMuted),
+                        _BellButton(c: c),
                       ]),
-                    ),
+                      const SizedBox(height: AppSpacing.s12),
+                      // البحث داخل الهيرو — حقل أبيض ناصع
+                      InkWell(
+                        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const ExploreScreen(),
+                        )),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(children: [
+                            Icon(Icons.search_rounded, size: 22, color: c.primary),
+                            const SizedBox(width: AppSpacing.s12),
+                            Text('قاعة أعراس؟ صالون؟ هدية؟', style: AppText.bodyM(c.textMuted)),
+                            const Spacer(),
+                            Icon(Icons.tune_rounded, size: 20, color: c.textMuted),
+                          ]),
+                        ),
+                      ),
+                    ]),
                   ),
                   const SizedBox(height: AppSpacing.s24),
                   Padding(
@@ -293,8 +441,11 @@ class HomeScreen extends ConsumerWidget {
                     child: Row(children: [
                       Icon(Icons.near_me_rounded, size: 16, color: c.primary),
                       const SizedBox(width: AppSpacing.s4),
-                      Text(ref.watch(userCityProvider) == 'موقعي الحالي' ? 'الأقرب إليك' : 'مميز لك',
-                          style: AppText.headingM(c.textPrimary)),
+                      Builder(builder: (context) {
+                        final hasLoc = ref.watch(userLocationProvider) != null;
+                        return Text(hasLoc ? 'الأقرب إليك' : 'مميز لك',
+                            style: AppText.headingM(c.textPrimary));
+                      }),
                       const Spacer(),
                       Text('عرض الكل', style: AppText.caption(c.primary)),
                     ]),
@@ -330,98 +481,7 @@ class HomeScreen extends ConsumerWidget {
                       separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s12),
                       itemBuilder: (context, i) {
                         final v = vendors[i];
-                        return InkWell(
-                          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => VendorDetailsScreen(idOrSlug: v['slug'] as String? ?? v['id'] as String),
-                          )),
-                          child: Container(
-                          clipBehavior: Clip.antiAlias,
-                          decoration: BoxDecoration(
-                            color: c.surface,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: c.border),
-                          ),
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            // صورة الغلاف — 150px مع fallback أنيق
-                            if (v['imageUrl'] != null)
-                              CachedNetworkImage(
-                                imageUrl: 'https://panel.fahd-car.cloud${v['imageUrl']}',
-                                height: 130, width: double.infinity, fit: BoxFit.cover,
-                                placeholder: (_, __) => Container(height: 130, color: c.primary.withOpacity(0.06)),
-                                errorWidget: (_, __, ___) => Container(
-                                  height: 130, color: c.primary.withOpacity(0.06),
-                                  child: Icon(Icons.storefront_outlined, size: 40, color: c.primary.withOpacity(0.4)),
-                                ),
-                              )
-                            else
-                              Container(
-                                height: 130, width: double.infinity, color: c.primary.withOpacity(0.06),
-                                child: Icon(Icons.storefront_outlined, size: 40, color: c.primary.withOpacity(0.5)),
-                              ),
-                            Padding(
-                              padding: const EdgeInsets.all(AppSpacing.s12),
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Row(children: [
-                                  Expanded(child: Text(v['name'] as String? ?? '',
-                                      style: AppText.headingS(c.textPrimary),
-                                      maxLines: 1, overflow: TextOverflow.ellipsis)),
-                                  const SizedBox(width: AppSpacing.s8),
-                                  Icon(Icons.star, size: 16, color: c.accent),
-                                  const SizedBox(width: 2),
-                                  Text('${v['averageRating'] ?? 0}',
-                                      style: AppText.caption(c.textSecondary)),
-                                  const SizedBox(width: AppSpacing.s8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: c.primary.withOpacity(0.08),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(v['minPrice'] != null ? 'من ${v['minPrice']} \$' : '—',
-                                        style: AppText.caption(c.primary)),
-                                  ),
-                                ]),
-                                const SizedBox(height: AppSpacing.s8),
-                                Text(v['description'] as String? ?? '',
-                                    style: AppText.bodyM(c.textSecondary),
-                                    maxLines: 2, overflow: TextOverflow.ellipsis),
-                                const SizedBox(height: AppSpacing.s8),
-                                Row(children: [
-                                  Icon(Icons.place_outlined, size: 14, color: c.textMuted),
-                                  const SizedBox(width: 2),
-                                  Flexible(child: Text((v['address'] ?? '') as String,
-                                      style: AppText.caption(c.textMuted),
-                                      maxLines: 1, overflow: TextOverflow.ellipsis)),
-                                  // المسافة من موقع المستخدم إن توفرت
-                                  Builder(builder: (context) {
-                                    final me = ref.watch(userLocationProvider);
-                                    final vLat = v['latitude'];
-                                    final vLng = v['longitude'];
-                                    if (me == null || vLat == null || vLng == null) return const SizedBox.shrink();
-                                    final dist = distanceKm(me.lat, me.lng,
-                                        double.parse(vLat.toString()), double.parse(vLng.toString()));
-                                    return Padding(
-                                      padding: const EdgeInsets.only(right: 6),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                        decoration: BoxDecoration(
-                                          color: c.primary.withOpacity(0.08),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                          Icon(Icons.near_me_rounded, size: 11, color: c.primary),
-                                          const SizedBox(width: 2),
-                                          Text(dist, style: AppText.caption(c.primary)),
-                                        ]),
-                                      ),
-                                    );
-                                  }),
-                                ]),
-                              ]),
-                            ),
-                          ]),
-                          ),
-                        );
+                        return _VendorProximityCard(v: v);
                       },
                     );
                   },

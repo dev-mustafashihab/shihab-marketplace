@@ -115,6 +115,16 @@ class _LocationSheetState extends ConsumerState<_LocationSheet> {
   }
 }
 
+/// المسافة بالأمتار (خام) — للفرز والمقارنة.
+double distanceMeters(double lat1, double lng1, double lat2, double lng2) {
+  const r = 6371000.0;
+  final dLat = (lat2 - lat1) * 3.141592653589793 / 180;
+  final dLng = (lng2 - lng1) * 3.141592653589793 / 180;
+  final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+      math.cos(lat1 * 3.141592653589793 / 180) * math.cos(lat2 * 3.141592653589793 / 180) * math.sin(dLng / 2) * math.sin(dLng / 2);
+  return 2 * r * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+}
+
 /// حساب المسافة كم (هافرزاينوس) — للعرض على البطاقات.
 String distanceKm(double lat1, double lng1, double lat2, double lng2) {
   const r = 6371.0;

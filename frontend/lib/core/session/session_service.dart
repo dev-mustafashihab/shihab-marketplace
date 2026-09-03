@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
@@ -90,7 +92,45 @@ final userLocationProvider = StateProvider<LatLng?>((ref) => null);
 final userCityProvider = StateProvider<String>((ref) => 'دمشق');
 
 /// جلب الموقع التقريبي عبر IP (يعمل بلا صلاحيات على كل المنصات)
+/// نسخة container للاستخدام عند الإقلاع (قبل وجود WidgetRef).
+Future<bool> acquireContainerLocation(ProviderContainer container) async {
+  return _acquire(
+    container.read,
+    (p) => container.read(userLocationProvider.notifier).state = p,
+  );
+}
+
+/// سلسلة تحديد الموقع: (1) GPS ناتيف بدقة عالية (2) fallback عبر IP إن رُفض الإذن.
+/// تُرجع true فقط إذا وصل موقع مستخدم فعلاً.
 Future<bool> acquireLocation(WidgetRef ref) async {
+  return _acquire(ref.read, (p) => ref.read(userLocationProvider.notifier).state = p);
+}
+
+Future<bool> _acquire(
+  T Function<T>(ProviderListenable<T>) read,
+  void Function(LatLng) setLocation,
+) async {
+  // (1) GPS الحقيقي — الأدق والأسرع عند توفر الإذن
+  try {
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+      final serviceOn = await Geolocator.isLocationServiceEnabled();
+      if (serviceOn) {
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 12)),
+        );
+        setLocation(LatLng(lat: pos.latitude, lng: pos.longitude));
+        await SessionService.saveLocation(pos.latitude, pos.longitude, null);
+        return true;
+      }
+    }
+  } catch (_) {
+    // GPS فشل → جرب IP
+  }
+  // (2) fallback: تقريب عبر IP
   try {
     final res = await http.get(
       Uri.parse('https://ipapi.co/json/'),
@@ -101,7 +141,7 @@ Future<bool> acquireLocation(WidgetRef ref) async {
     final lat = d['latitude'];
     final lng = d['longitude'];
     if (lat is num && lng is num) {
-      ref.read(userLocationProvider.notifier).state = LatLng(lat: lat.toDouble(), lng: lng.toDouble());
+      setLocation(LatLng(lat: lat.toDouble(), lng: lng.toDouble()));
       await SessionService.saveLocation(lat.toDouble(), lng.toDouble(), null);
       return true;
     }
