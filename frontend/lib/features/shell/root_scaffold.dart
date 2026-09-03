@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/network/api_client.dart';
 import '../../core/session/session_service.dart';
+import '../home/models/home_feed.dart';
+import '../home/state/home_feed_provider.dart';
 import '../location/location_picker.dart';
 import '../notifications/notifications_screen.dart';
 import '../home/home_search_sheet.dart';
@@ -139,17 +141,6 @@ class _CategoryAll extends StatelessWidget {
   }
 }
 
-/// تسمية السعر بعملة البائع المرسلة من الـ API — لا `$` ثابتة.
-String _priceLabel(Map<String, dynamic> v) {
-  final price = v['minPrice'];
-  final cur = switch ((v['currency'] as String?) ?? 'USD') {
-    'SYP' => 'ل.س',
-    'TRY' => 'ل.ت',
-    _ => 'دولار',
-  };
-  return 'من $price $cur';
-}
-
 /// مواصفات التصنيف: أيقونة + لون مميز.
 class _CatSpec {
   const _CatSpec(this.icon, this.color);
@@ -245,17 +236,6 @@ final _unreadProvider = FutureProvider.autoDispose.family<int, String?>((ref, to
   }
 });
 
-/// أيقونة التصنيف حسب slug — هوية بصرية مميزة لكل نوع خدمة.
-IconData _iconForCategory(String? slug) => switch (slug) {
-      'venues' => Icons.account_balance,
-      'salons' => Icons.content_cut,
-      'restaurants' => Icons.restaurant,
-      'gifts' => Icons.card_giftcard,
-      'pools' => Icons.pool,
-      'photography' => Icons.photo_camera,
-      _ => Icons.storefront_outlined,
-    };
-
 /// الجذر: Bottom Shell + عربي RTL من اللحظة الأولى.
 class RootScaffold extends ConsumerStatefulWidget {
   const RootScaffold({super.key});
@@ -280,74 +260,21 @@ class _RootScaffoldState extends ConsumerState<RootScaffold> {
   }
 }
 
-/// التصنيف المختار في الرئيسية — null = الكل. الفلترة داخل الصفحة بلا انتقال.
-final homeCategoryProvider = StateProvider<String?>((ref) => null);
-
-/// بيانات الرئيسية — عند توفر موقع المستخدم: بحث جغرافي PostGIS مرتب بالأقرب (50 كم)
-/// وإلا: قائمة مميزة عامة. يحترم التصنيف المختار في الصفحة نفسها.
-final homeVendorsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final me = ref.watch(userLocationProvider);
-  final api = ref.watch(apiClientProvider);
-  final catId = ref.watch(homeCategoryProvider);
-  final List<Map<String, dynamic>> rows;
-  if (me != null) {
-    final d = await api.get(
-      '/search',
-      query: {
-        'lat': me.lat.toStringAsFixed(6),
-        'lng': me.lng.toStringAsFixed(6),
-        'radiusKm': '50',
-        'limit': '10',
-        if (catId != null) 'categoryId': catId,
-      },
-    );
-    final raw = d is List
-        ? d
-        : (d is Map && d['data'] is List ? d['data'] as List : <dynamic>[]);
-    rows = raw
-        .whereType<Map>()
-        .map((m) => Map<String, dynamic>.from(m))
-        .toList();
-    // الـ API يرتب بالأقرب أصلاً (ORDER BY distance) — ترتيب وقائي على نسخة قابلة للتعديل
-    rows.sort((a, b) {
-      final da = (a['distanceKm'] as num?)?.toDouble() ?? double.infinity;
-      final db = (b['distanceKm'] as num?)?.toDouble() ?? double.infinity;
-      return da.compareTo(db);
-    });
-    return rows;
-  }
-  final d = await api.get('/vendors', query: {
-    'limit': '10',
-    if (catId != null) 'categoryId': catId,
-  });
-  final raw = d is List
-      ? d
-      : (d is Map && d['data'] is List ? d['data'] as List : <dynamic>[]);
-  return raw.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
-});
-
-final homeCategoriesProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final d = await ref.watch(apiClientProvider).get('/categories');
-  if (d is List) return d.cast<Map<String, dynamic>>();
-  return const <Map<String, dynamic>>[];
-});
-
 /// بطاقة بائع — تصميم أفقي مدمج: صورة 92px + معلومات + شارة مسافة بارزة.
 /// المسافة تظهر فقط عند توفر موقع المستخدم — وإلا شارة «مميز».
 class _VendorProximityCard extends ConsumerWidget {
   const _VendorProximityCard({required this.v});
-  final Map<String, dynamic> v;
+  final VendorCard v;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
-    // المسافة جاهزة من الـ API عند البحث الجغرافي (distanceKm رقم كم) — لا حساب محلي
-    final dKm = (v['distanceKm'] as num?)?.toDouble();
-    final dist = dKm != null ? '${dKm.toStringAsFixed(dKm < 1 ? 0 : 1)} كم' : null;
+    // المسافة جاهزة من الـ API عند البحث الجغرافي — لا حساب محلي
+    final dist = v.distanceLabel;
 
     return InkWell(
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => VendorDetailsScreen(idOrSlug: v['slug'] as String? ?? v['id'] as String),
+        builder: (_) => VendorDetailsScreen(idOrSlug: v.slug.isEmpty ? v.id : v.slug),
       )),
       borderRadius: BorderRadius.circular(16),
       child: Container(
@@ -362,9 +289,9 @@ class _VendorProximityCard extends ConsumerWidget {
           // الصورة — مربعة مستديرة
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: v['imageUrl'] != null
+            child: v.imageUrl != null
                 ? CachedNetworkImage(
-                    imageUrl: 'https://panel.fahd-car.cloud${v['imageUrl']}',
+                    imageUrl: 'https://panel.fahd-car.cloud${v.imageUrl}',
                     width: 92, height: 92, fit: BoxFit.cover,
                     placeholder: (_, __) => Container(width: 92, height: 92, color: c.primary.withOpacity(0.06)),
                     errorWidget: (_, __, ___) => Container(
@@ -382,10 +309,10 @@ class _VendorProximityCard extends ConsumerWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Expanded(child: Text(v['name'] as String? ?? '',
+                Expanded(child: Text(v.name,
                     style: AppText.headingS(c.textPrimary),
                     maxLines: 1, overflow: TextOverflow.ellipsis)),
-                if (v['isOpen'] == true) ...[
+                if (v.isOpen) ...[
                   const SizedBox(width: AppSpacing.s4),
                   Tooltip(
                     message: 'مفتوح الآن',
@@ -396,16 +323,16 @@ class _VendorProximityCard extends ConsumerWidget {
                   ),
                 ],
                 // التقييم يظهر فقط إن وُجد (لا نجمة صفر محرجة)
-                if (((v['averageRating'] as num?) ?? 0) > 0) ...[
+                if (v.averageRating > 0) ...[
                   const SizedBox(width: AppSpacing.s4),
                   Icon(Icons.star_rounded, size: 16, color: c.accent),
                   const SizedBox(width: 2),
-                  Text('${v['averageRating']} (${v['reviewsCount'] ?? v['reviewCount'] ?? 0})',
+                  Text(v.ratingText,
                       style: AppText.caption(c.textSecondary)),
                 ],
               ]),
               const SizedBox(height: AppSpacing.s4),
-              Text(v['description'] as String? ?? '',
+              Text(v.description,
                   style: AppText.caption(c.textSecondary),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
               const SizedBox(height: AppSpacing.s8),
@@ -428,19 +355,19 @@ class _VendorProximityCard extends ConsumerWidget {
                 const SizedBox(width: AppSpacing.s8),
                 Icon(Icons.place_outlined, size: 12, color: c.textMuted),
                 const SizedBox(width: 2),
-                Expanded(child: Text((v['address'] ?? '') as String,
+                Expanded(child: Text(v.address,
                     style: AppText.caption(c.textMuted),
                     maxLines: 1, overflow: TextOverflow.ellipsis)),
                 const SizedBox(width: AppSpacing.s4),
                 // السعر أدنى اليمين
-                if (v['minPrice'] != null)
+                if (v.minPrice != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: c.primary.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(_priceLabel(v),
+                    child: Text(v.priceLabel,
                         style: AppText.caption(c.primary)),
                   ),
               ]),
@@ -789,11 +716,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               );
                             }
                             final cat = shown[i - 1];
-                            final id = cat['id'] as String;
+                            final id = cat.id;
                             return _CategoryCard(
-                              name: (cat['nameAr'] ?? '') as String,
-                              slug: cat['slug'] as String?,
-                              iconKey: cat['iconKey'] as String?,
+                              name: cat.nameAr,
+                              slug: cat.slug,
+                              iconKey: cat.iconKey,
                               selected: activeId == id,
                               onTap: () => ref.read(homeCategoryProvider.notifier).state =
                                   activeId == id ? null : id,
