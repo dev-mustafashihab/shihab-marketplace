@@ -14,7 +14,8 @@
     "seed": "prisma db seed",
     "test": "jest --runInBand",
     "test:cov": "jest --coverage --runInBand",
-    "test:e2e": "jest --runInBand --config test/jest-e2e.json"
+    "test:e2e": "jest --runInBand --config test/jest-e2e.json",
+    "seed:fill": "tsx prisma/seed-fill.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"
