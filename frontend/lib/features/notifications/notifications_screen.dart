@@ -116,7 +116,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(n['titleAr'] ?? n['title'] ?? 'إشعار', style: AppText.bodyL(read ? c.textSecondary : c.textPrimary)),
                         const SizedBox(height: 2),
-                        if (n['bodyAr'] ?? n['body'] != null)
+                        if (n['bodyAr'] != null || n['body'] != null)
                           Text((n['bodyAr'] ?? n['body']) as String, style: AppText.caption(c.textMuted), maxLines: 2),
                         const SizedBox(height: 4),
                         Text(_fmtDate(n['createdAt'] as String?), style: AppText.caption(c.textMuted)),
@@ -159,7 +159,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 
   List<Map<String, dynamic>> _rowsOf(dynamic d) {
-    if (d is List) return d.cast<Map<String, dynamic>>();
+    if (d is List && d.length > 1 && d[1] is List) {
+      return (d[1] as List).whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList();
+    }
+    if (d is List) return d.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList();
     if (d is Map && d['data'] is List) return (d['data'] as List).cast<Map<String, dynamic>>();
     return const [];
   }

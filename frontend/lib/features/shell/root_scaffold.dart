@@ -6,6 +6,7 @@ import '../../core/network/api_client.dart';
 import '../../core/session/session_service.dart';
 import '../location/location_picker.dart';
 import '../notifications/notifications_screen.dart';
+import '../home/home_search_sheet.dart';
 import '../vendors/vendor_details_screen.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -34,24 +35,24 @@ class _CategoryCard extends StatelessWidget {
       button: true,
       label: name,
       child: SizedBox(
-        width: 104,
-        height: 64,
+        width: 108,
+        height: 50,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s8),
             decoration: BoxDecoration(
-              color: spec.color.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: spec.color.withOpacity(0.28)),
+              color: spec.color.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: spec.color.withOpacity(0.22)),
             ),
             child: Row(children: [
               Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(color: spec.color, borderRadius: BorderRadius.circular(10)),
-                child: Icon(spec.icon, size: 20, color: Colors.white),
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(color: spec.color, borderRadius: BorderRadius.circular(8)),
+                child: Icon(spec.icon, size: 17, color: Colors.white),
               ),
               const SizedBox(width: AppSpacing.s8),
               Expanded(
@@ -107,11 +108,22 @@ class _BellButton extends ConsumerWidget {
     final token = ref.watch(sessionTokenProvider);
     final unreadAsync = ref.watch(_unreadProvider(token));
     final unread = unreadAsync.valueOrNull ?? 0;
-    return Stack(clipBehavior: Clip.none, children: [
-      IconButton(
-        onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsScreen())),
-        icon: Icon(Icons.notifications_none_rounded, size: 26, color: c.textPrimary),
-      ),
+    return Semantics(
+      button: true,
+      label: 'الإشعارات',
+      child: Stack(clipBehavior: Clip.none, children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsScreen())),
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Icon(Icons.notifications_none_rounded, size: 26, color: c.textPrimary),
+            ),
+          ),
+        ),
       if (unread > 0)
         Positioned(
           top: 6, left: 6,
@@ -123,7 +135,8 @@ class _BellButton extends ConsumerWidget {
                 textAlign: TextAlign.center),
           ),
         ),
-    ]);
+      ]),
+    );
   }
 }
 
@@ -365,6 +378,7 @@ class _HomeFilterBar extends StatelessWidget {
   const _HomeFilterBar({
     required this.c,
     required this.onSearch,
+    required this.onFilter,
     required this.onOpenNow,
     required this.onNearby,
     required this.onLowestPrice,
@@ -372,6 +386,7 @@ class _HomeFilterBar extends StatelessWidget {
 
   final AppColors c;
   final VoidCallback onSearch;
+  final VoidCallback onFilter;
   final VoidCallback onOpenNow;
   final VoidCallback onNearby;
   final VoidCallback onLowestPrice;
@@ -390,33 +405,44 @@ class _HomeFilterBar extends StatelessWidget {
           ],
         ),
         child: Column(children: [
-          InkWell(
-            onTap: onSearch,
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
-              height: 52,
-              decoration: BoxDecoration(
-                color: c.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: c.border),
-              ),
-              child: Row(children: [
-                Icon(Icons.search_rounded, size: 22, color: c.primary),
-                const SizedBox(width: AppSpacing.s12),
-                Expanded(
-                  child: Text(
-                    'قاعة أعراس؟ صالون؟ هدية؟',
-                    style: AppText.bodyM(c.textMuted),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: c.border),
+            ),
+            child: Row(children: [
+              Expanded(
+                child: InkWell(
+                  onTap: onSearch,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12),
+                    child: Row(children: [
+                      Icon(Icons.search_rounded, size: 22, color: c.primary),
+                      const SizedBox(width: AppSpacing.s12),
+                      Expanded(
+                        child: Text(
+                          'قاعة أعراس؟ صالون؟ هدية؟',
+                          style: AppText.bodyM(c.textMuted),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ]),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.s8),
-                Icon(Icons.tune_rounded, size: 20, color: c.textMuted),
-              ]),
-            ),
+              ),
+              IconButton(
+                key: const Key('home-search-filter-inline'),
+                onPressed: onFilter,
+                icon: Icon(Icons.tune_rounded, size: 20, color: c.primary),
+                tooltip: 'فلترة النتائج',
+              ),
+            ]),
           ),
           const SizedBox(height: AppSpacing.s4),
           SizedBox(
@@ -534,14 +560,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             InkWell(
               onTap: () => showLocationPicker(context, ref),
               borderRadius: BorderRadius.circular(8),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.location_on_rounded, size: 20, color: c.primary),
-                const SizedBox(width: AppSpacing.s4),
-                Flexible(child: Text(ref.watch(userCityProvider),
-                    style: AppText.headingS(c.textPrimary),
-                    maxLines: 1, overflow: TextOverflow.ellipsis)),
-                Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: c.textMuted),
-              ]),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12, horizontal: AppSpacing.s4),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.location_on_rounded, size: 20, color: c.primary),
+                  const SizedBox(width: AppSpacing.s4),
+                  Flexible(child: Text(ref.watch(userCityProvider),
+                      style: AppText.headingS(c.textPrimary),
+                      maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: c.textMuted),
+                ]),
+              ),
             ),
           ])),
           _BellButton(c: c),
@@ -556,7 +585,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
     final filterBar = _HomeFilterBar(
       c: c,
-      onSearch: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ExploreScreen())),
+      onSearch: () => showHomeSearchSheet(context, ref),
+      onFilter: () => showHomeSearchSheet(context, ref, openFilters: true),
       onOpenNow: () => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => const ExploreScreen(openNow: true),
       )),
@@ -600,13 +630,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(height: AppSpacing.s8),
                   catsAsync.when(
                     loading: () => SizedBox(
-                      height: 82,
+                      height: 64,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: List.generate(4, (_) => const SkeletonLoader(
                           width: 76,
-                          height: 72,
-                          borderRadius: BorderRadius.all(Radius.circular(14)),
+                          height: 50,
+                          borderRadius: BorderRadius.all(Radius.circular(10)),
                         )),
                       ),
                     ),
@@ -615,7 +645,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       final shown = cats.take(6).toList();
                       if (shown.isEmpty) return const SizedBox.shrink();
                       return SizedBox(
-                        height: 82,
+                        height: 64,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +12,8 @@ import '../../core/theme/app_typography.dart';
 Future<void> showLocationPicker(BuildContext context, WidgetRef ref) {
   return showModalBottomSheet(
     context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (_) => const _LocationSheet(),
   );
@@ -66,17 +69,18 @@ class _LocationSheetState extends ConsumerState<_LocationSheet> {
   Future<void> _pickCity(String name, LatLng pos) async {
     ref.read(userLocationProvider.notifier).state = pos;
     ref.read(userCityProvider.notifier).state = name;
-    await SessionService.saveLocation(pos.lat, pos.lng, name, source: LocationSource.manual);
+    unawaited(SessionService.saveLocation(pos.lat, pos.lng, name, source: LocationSource.manual).catchError((_) {}));
     if (mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return SafeArea(
+    return SizedBox(
+      height: MediaQuery.sizeOf(context).height * 0.88,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(AppSpacing.s16, AppSpacing.s12, AppSpacing.s16, AppSpacing.s16),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Container(
             width: 40, height: 4,
             decoration: BoxDecoration(color: c.border, borderRadius: BorderRadius.circular(2)),
@@ -116,10 +120,9 @@ class _LocationSheetState extends ConsumerState<_LocationSheet> {
             ],
           ],
           const SizedBox(height: AppSpacing.s16),
-          Text('أو اختر مدينة', style: AppText.bodyL(c.textSecondary)),
+          Text('أو اختر المحافظة', style: AppText.bodyL(c.textSecondary)),
           const SizedBox(height: AppSpacing.s8),
-          SizedBox(
-            height: 260,
+          Expanded(
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: SYRIA_CITIES.length,

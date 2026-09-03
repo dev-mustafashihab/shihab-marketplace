@@ -36,21 +36,14 @@ class _AppShellState extends ConsumerState<AppShell> {
             ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: NavigationBar(
-            selectedIndex: widget.currentIndex,
-            onDestinationSelected: widget.onTap,
-            backgroundColor: c.surface,
-            surfaceTintColor: Colors.transparent,
-            indicatorColor: c.primary.withOpacity(0.12),
-            indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            height: 76,
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            destinations: [
-              _dest(c, 0, Icons.home_outlined, Icons.home, 'الرئيسية'),
-              _dest(c, 1, Icons.search_outlined, Icons.search, 'استكشف'),
-              _dest(c, 2, Icons.event_note_outlined, Icons.event_note, 'حجوزاتي'),
-              _dest(c, 3, Icons.shopping_bag_outlined, Icons.shopping_bag, 'طلباتي'),
-              _dest(c, 4, Icons.person_outline, Icons.person, 'حسابي'),
+          child: Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              _DockDestination(c: c, index: 0, currentIndex: widget.currentIndex, icon: Icons.home_outlined, activeIcon: Icons.home, label: 'الرئيسية', onTap: widget.onTap),
+              _DockDestination(c: c, index: 1, currentIndex: widget.currentIndex, icon: Icons.search_outlined, activeIcon: Icons.search, label: 'استكشف', onTap: widget.onTap),
+              _DockDestination(c: c, index: 2, currentIndex: widget.currentIndex, icon: Icons.event_note_outlined, activeIcon: Icons.event_note, label: 'حجوزاتي', onTap: widget.onTap),
+              _DockDestination(c: c, index: 3, currentIndex: widget.currentIndex, icon: Icons.shopping_bag_outlined, activeIcon: Icons.shopping_bag, label: 'طلباتي', onTap: widget.onTap),
+              _DockDestination(c: c, index: 4, currentIndex: widget.currentIndex, icon: Icons.person_outline, activeIcon: Icons.person, label: 'حسابي', onTap: widget.onTap),
             ],
           ),
         ),
@@ -58,12 +51,66 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
   }
 
-  NavigationDestination _dest(AppColors c, int i, IconData out, IconData sel, String label) {
-    final active = widget.currentIndex == i;
-    return NavigationDestination(
-      icon: Icon(out, size: 24, color: active ? c.primary : c.textMuted),
-      selectedIcon: Icon(sel, size: 24, color: c.primary),
-      label: label,
+}
+
+class _DockDestination extends StatelessWidget {
+  const _DockDestination({
+    required this.c,
+    required this.index,
+    required this.currentIndex,
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final AppColors c;
+  final int index;
+  final int currentIndex;
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = currentIndex == index;
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: active,
+        label: label,
+        child: InkWell(
+          onTap: () => onTap(index),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.s4, horizontal: 2),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                width: 46,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: active ? c.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(active ? activeIcon : icon, size: 22, color: active ? c.surface : c.textMuted),
+              ),
+              const SizedBox(height: 2),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 180),
+                style: TextStyle(
+                  fontSize: active ? 12 : 11,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                  color: active ? c.primary : c.textMuted,
+                ),
+                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+            ]),
+          ),
+        ),
+      ),
     );
   }
 }
