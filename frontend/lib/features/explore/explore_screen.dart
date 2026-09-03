@@ -15,8 +15,17 @@ import '../location/location_picker.dart';
 
 /// استكشف — بحث نصي حي + فلاتر أساسية (سعر/تقييم) فوق /search.
 class ExploreScreen extends ConsumerStatefulWidget {
-  const ExploreScreen({super.key, this.categoryId});
+  const ExploreScreen({
+    super.key,
+    this.categoryId,
+    this.openNow = false,
+    this.nearby = false,
+    this.lowestPrice = false,
+  });
   final String? categoryId;
+  final bool openNow;
+  final bool nearby;
+  final bool lowestPrice;
 
   @override
   ConsumerState<ExploreScreen> createState() => _ExploreScreenState();
@@ -50,11 +59,20 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final api = ref.read(apiClientProvider);
+    final location = ref.watch(userLocationProvider);
     final query = {
       'limit': '30',
       if (_query.isNotEmpty) 'q': _query,
       if (_maxPrice != null) 'maxPrice': _maxPrice!.round().toString(),
       if (widget.categoryId != null) 'categoryId': widget.categoryId!,
+      if (widget.openNow) 'openNow': 'true',
+      if (widget.lowestPrice) 'sort': 'price',
+      if (widget.nearby && location != null) ...{
+        'lat': location.lat.toString(),
+        'lng': location.lng.toString(),
+        'radiusKm': '50',
+        'sort': 'distance',
+      },
     };
 
     return Scaffold(

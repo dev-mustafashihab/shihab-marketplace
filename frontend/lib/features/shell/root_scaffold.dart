@@ -311,6 +311,36 @@ class _VendorProximityCard extends ConsumerWidget {
   }
 }
 
+/// شريحة فلترة سريعة — أيقونة ملونة + تسمية، حد ملطف بلونها.
+class _QuickChip extends StatelessWidget {
+  const _QuickChip({required this.icon, required this.label, required this.color, required this.onTap});
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(17),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(color: color.withOpacity(0.35)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 5),
+          Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: color)),
+        ]),
+      ),
+    );
+  }
+}
+
 /// Home — كما في التصميم المعتمد (موقع/بحث/تصنيفات/عروض/قريب منك).
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -334,70 +364,107 @@ class HomeScreen extends ConsumerWidget {
             slivers: [
               SliverToBoxAdapter(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  // ==== الهيرو: تدرج نيلي عميق يحتضن التحية + الموقع + البحث ====
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(AppSpacing.screenH, AppSpacing.s12, AppSpacing.screenH, 0),
-                    padding: const EdgeInsets.all(AppSpacing.s16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      gradient: LinearGradient(
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
-                        colors: [c.primary, c.primary.withOpacity(0.82)],
-                      ),
-                      boxShadow: [BoxShadow(color: c.primary.withOpacity(0.25), blurRadius: 18, offset: const Offset(0, 8))],
-                    ),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  // ==== الهيدر: تحية + موقع + إشعارات + خط ذهبي فاصل (الشكل القديم الأنظف + ميزات) ====
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, AppSpacing.s12, AppSpacing.screenH, 0),
+                    child: Column(children: [
                       Row(children: [
-                        Expanded(
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Builder(builder: (context) {
-                              final h = DateTime.now().hour;
-                              final greet = h < 12 ? 'صباح الخير ☀' : (h < 18 ? 'مساء النور' : 'مساء الخير');
-                              return Text(greet,
-                                  style: AppText.caption(Colors.white.withOpacity(0.75)));
-                            }),
-                            const SizedBox(height: AppSpacing.s4),
-                            InkWell(
-                              onTap: () => showLocationPicker(context, ref),
-                              borderRadius: BorderRadius.circular(8),
-                              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                Icon(Icons.location_on_rounded, size: 20, color: c.accent),
-                                const SizedBox(width: AppSpacing.s4),
-                                Flexible(child: Text(ref.watch(userCityProvider),
-                                    style: AppText.headingS(Colors.white),
-                                    maxLines: 1, overflow: TextOverflow.ellipsis)),
-                                Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.white.withOpacity(0.7)),
-                              ]),
-                            ),
-                          ]),
-                        ),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Builder(builder: (context) {
+                            final h = DateTime.now().hour;
+                            final greet = h < 12 ? 'صباح الخير' : (h < 18 ? 'مساء النور' : 'مساء الخير');
+                            return Text(greet, style: AppText.caption(c.textMuted));
+                          }),
+                          const SizedBox(height: AppSpacing.s4),
+                          InkWell(
+                            onTap: () => showLocationPicker(context, ref),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(Icons.location_on_rounded, size: 20, color: c.primary),
+                              const SizedBox(width: AppSpacing.s4),
+                              Flexible(child: Text(ref.watch(userCityProvider),
+                                  style: AppText.headingS(c.textPrimary),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis)),
+                              Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: c.textMuted),
+                            ]),
+                          ),
+                        ])),
                         _BellButton(c: c),
                       ]),
-                      const SizedBox(height: AppSpacing.s12),
-                      // البحث داخل الهيرو — حقل أبيض ناصع
-                      InkWell(
-                        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => const ExploreScreen(),
-                        )),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(children: [
-                            Icon(Icons.search_rounded, size: 22, color: c.primary),
-                            const SizedBox(width: AppSpacing.s12),
-                            Text('قاعة أعراس؟ صالون؟ هدية؟', style: AppText.bodyM(c.textMuted)),
-                            const Spacer(),
-                            Icon(Icons.tune_rounded, size: 20, color: c.textMuted),
-                          ]),
+                      const SizedBox(height: AppSpacing.s8),
+                      // خط ذهبي فاصل أنيق — لمسة الهوية
+                      Container(
+                        height: 2,
+                        width: 56,
+                        decoration: BoxDecoration(
+                          color: c.accent,
+                          borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                     ]),
+                  ),
+                  const SizedBox(height: AppSpacing.s12),
+                  // شريط البحث الأصلي الأنيق (سطح فاتح بظل خفيف)
+                  InkWell(
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const ExploreScreen(),
+                    )),
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: c.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: c.border),
+                        boxShadow: [BoxShadow(color: c.primary.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4))],
+                      ),
+                      child: Row(children: [
+                        Icon(Icons.search_rounded, size: 22, color: c.primary),
+                        const SizedBox(width: AppSpacing.s12),
+                        Text('قاعة أعراس؟ صالون؟ هدية؟', style: AppText.bodyM(c.textMuted)),
+                        const Spacer(),
+                        Icon(Icons.tune_rounded, size: 20, color: c.textMuted),
+                      ]),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.s12),
+                  // ==== الفلاتر السريعة: اختصارات ذكية بضغطة واحدة ====
+                  SizedBox(
+                    height: 34,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                      children: [
+                        _QuickChip(
+                          icon: Icons.schedule_rounded,
+                          label: 'مفتوح الآن',
+                          color: const Color(0xFF2E7D32),
+                          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => const ExploreScreen(openNow: true),
+                          )),
+                        ),
+                        const SizedBox(width: AppSpacing.s8),
+                        _QuickChip(
+                          icon: Icons.near_me_rounded,
+                          label: 'الأقرب إليك',
+                          color: c.primary,
+                          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => const ExploreScreen(),
+                          )),
+                        ),
+                        const SizedBox(width: AppSpacing.s8),
+                        _QuickChip(
+                          icon: Icons.local_offer_rounded,
+                          label: 'الأقل سعراً',
+                          color: c.accent,
+                          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => const ExploreScreen(),
+                          )),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.s24),
                   Padding(

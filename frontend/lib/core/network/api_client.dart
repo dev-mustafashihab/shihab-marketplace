@@ -15,12 +15,30 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
-  ApiClient({required this.baseUrl, this.token, this.onAuthLost});
+  ApiClient({
+    required this.baseUrl,
+    String? token,
+    this.onAuthLost,
+    this.onTokenRefreshed,
+    http.Client? client,
+  })  : _client = client ?? http.Client(),
+        _currentToken = token;
   final String baseUrl;
-  final String? token;
+  final http.Client _client;
+  String? _currentToken;
+
+  /// توافق مع الشاشات التي تعرض حالة تسجيل الدخول.
+  String? get token => _currentToken;
 
   /// يُستدعى مرة عند موت الجلسة (401 + فشل التجديد) ليعود التطبيق لحالة «سجّل الدخول».
   final void Function()? onAuthLost;
+
+  /// يُستدعى بعد تدوير التوكن حتى تتحدث حالة Riverpod أيضاً.
+  final void Function(String token)? onTokenRefreshed;
+
+  /// قفل منع سباق التجديد: كل 401s المتزامنة تشارك Future واحدة بدل إطلاق عدة /auth/refresh
+  /// (الـ backend يدوّر الـ refresh — الثاني بالقديم سيفشل ويمسح الجلسة بغير داعٍ)
+  static Future<String?>? _refreshInFlight;
 
   Future<dynamic> get(String path, {Map<String, String>? query}) async {
     var uri = Uri.parse('$baseUrl$path');
@@ -30,22 +48,22 @@ class ApiClient {
         ...query,
       });
     }
-    return _run(() => http.get(uri, headers: _headers()), path: path);
+    return _run(() => _client.get(uri, headers: _headers()), path: path);
   }
 
   Future<dynamic> post(String path, {Object? body}) async {
-    return _run(() => http.post(Uri.parse('$baseUrl$path'),
+    return _run(() => _client.post(Uri.parse('$baseUrl$path'),
         headers: _headers(), body: jsonEncode(body ?? {})), path: path);
   }
 
   Future<dynamic> patch(String path, {Object? body}) async {
-    return _run(() => http.patch(Uri.parse('$baseUrl$path'),
+    return _run(() => _client.patch(Uri.parse('$baseUrl$path'),
         headers: _headers(), body: jsonEncode(body ?? {})), path: path);
   }
 
   Map<String, String> _headers() => {
         'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
+        if (_currentToken != null) 'Authorization': 'Bearer $_currentToken',
       };
 
   Future<dynamic> _run(Future<http.Response> Function() fn, {String path = '', bool retried = false}) async {
@@ -58,9 +76,12 @@ class ApiClient {
     if (res.statusCode == 401 && !retried && token != null && !path.startsWith('/auth/')) {
       final newToken = await _tryRefresh();
       if (newToken != null) {
+        // قد تكون عملية التجديد بدأت من ApiClient آخر؛ حدّث هذا الكائن أيضاً.
+        _currentToken = newToken;
         return _run(fn, path: path, retried: true);
       }
       // الجلسة ميتة فعلاً (لا refresh أو منتهي) → نظّفها كي تظهر شاشات «سجّل الدخول»
+      _currentToken = null;
       await SessionService.saveToken(null);
       await SessionService.saveRefreshToken(null);
       onAuthLost?.call();
@@ -76,12 +97,18 @@ class ApiClient {
     return json['data'];
   }
 
-  /// تجديد الـ access token عبر refresh token المخزَّن — يحدّث الجلسة ويعيد توكن جديد أو null.
-  Future<String?> _tryRefresh() async {
+  /// تجديد الـ access token — بقفل مشترك يمنع سباق الدوران
+  Future<String?> _tryRefresh() {
+    if (_refreshInFlight != null) return _refreshInFlight!;
+    _refreshInFlight = _doRefresh().whenComplete(() => _refreshInFlight = null);
+    return _refreshInFlight!;
+  }
+
+  Future<String?> _doRefresh() async {
     try {
       final refresh = await SessionService.getRefreshToken();
       if (refresh == null || refresh.isEmpty) return null;
-      final res = await http
+      final res = await _client
           .post(Uri.parse('$baseUrl/auth/refresh'),
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode({'refreshToken': refresh}))
@@ -93,10 +120,12 @@ class ApiClient {
       final access = d['accessToken'] as String?;
       final newRefresh = d['refreshToken'] as String?;
       if (access == null || access.isEmpty) return null;
+      _currentToken = access;
       await SessionService.saveToken(access);
       if (newRefresh != null && newRefresh.isNotEmpty) {
         await SessionService.saveRefreshToken(newRefresh);
       }
+      onTokenRefreshed?.call(access);
       return access;
     } catch (_) {
       return null;
@@ -112,5 +141,6 @@ final apiClientProvider = Provider<ApiClient>((ref) {
     baseUrl: 'https://panel.fahd-car.cloud/mp-api/api/v1',
     token: ref.watch(sessionTokenProvider),
     onAuthLost: () => ref.read(sessionTokenProvider.notifier).state = null,
+    onTokenRefreshed: (token) => ref.read(sessionTokenProvider.notifier).state = token,
   );
 });

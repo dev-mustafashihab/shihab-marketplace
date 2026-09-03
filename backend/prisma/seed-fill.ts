@@ -2,7 +2,7 @@
 const { PrismaClient } = require('@prisma/client');
 const p = new PrismaClient();
 
-const DAY_MIN = (h, m = 0) => h * 60 + m;
+const DAY_MIN = (h: number, m = 0) => h * 60 + m;
 
 async function main() {
   // ===== استوديو الضياء (تصوير): موارد مصورين + خدمات تصوير + توفر =====

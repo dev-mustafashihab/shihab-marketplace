@@ -4,6 +4,7 @@ import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsInt,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
@@ -25,6 +26,7 @@ class SearchQueryDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0.1) @Max(100) radiusKm?: number;
   @IsOptional() @Type(() => Boolean) @IsBoolean() openNow?: boolean;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) capacity?: number;
+  @IsOptional() @IsIn(['price', 'distance']) sort?: 'price' | 'distance';
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
 }
@@ -48,6 +50,7 @@ export class SearchController {
       capacity: query.capacity,
       minRating: query.minRating,
       openNow: query.openNow,
+      sort: query.sort,
       page: query.page ?? 1,
       limit: query.limit ?? 20,
     });

@@ -12,6 +12,7 @@ export interface SearchFilters {
   radiusKm?: number;
   openNow?: boolean;
   capacity?: number;
+  sort?: 'price' | 'distance';
   page: number;
   limit: number;
 }
@@ -94,7 +95,9 @@ export class SearchService {
         FROM reviews GROUP BY vendor_id
       ) rr ON rr.vendor_id = v.id`;
 
-    const orderBy = f.radiusKm !== undefined && f.lat !== undefined && f.lng !== undefined
+    const orderBy = f.sort === 'price'
+      ? `ORDER BY v.min_price ASC NULLS LAST, v.is_open DESC, rr.average_rating DESC NULLS LAST, v.created_at DESC`
+      : f.radiusKm !== undefined && f.lat !== undefined && f.lng !== undefined
       ? `ORDER BY distance_m ASC NULLS LAST`
       : `ORDER BY v.is_open DESC, rr.average_rating DESC NULLS LAST, v.created_at DESC`;
 
