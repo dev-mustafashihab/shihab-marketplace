@@ -33,33 +33,33 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color border;
 
   static const light = AppColors(
-    primary: Color(0xFF0F6B5C),
-    primaryPressed: Color(0xFF0B564A),
-    accent: Color(0xFFC9A227),
-    background: Color(0xFFF7F6F2),
+    primary: Color(0xFF0AAEBF),
+    primaryPressed: Color(0xFF088E9C),
+    accent: Color(0xFF00C8D6),
+    background: Color(0xFFF2FBFC),
     surface: Color(0xFFFFFFFF),
-    textPrimary: Color(0xFF1C1B18),
-    textSecondary: Color(0xFF5F5B54),
-    textMuted: Color(0xFF98938A),
-    success: Color(0xFF2E7D32),
+    textPrimary: Color(0xFF0A2E33),
+    textSecondary: Color(0xFF4A6B6F),
+    textMuted: Color(0xFF8AA9AD),
+    success: Color(0xFF0AAEBF),
     warning: Color(0xFFB26A00),
     error: Color(0xFFC0392B),
-    border: Color(0xFFE4E1DA),
+    border: Color(0xFFD6EAF0),
   );
 
   static const dark = AppColors(
-    primary: Color(0xFF3D9B8A),
-    primaryPressed: Color(0xFF2F7D6F),
-    accent: Color(0xFFD9B84A),
-    background: Color(0xFF101413),
-    surface: Color(0xFF1A201E),
-    textPrimary: Color(0xFFF0EFEA),
-    textSecondary: Color(0xFFB5B0A6),
-    textMuted: Color(0xFF7F7A72),
-    success: Color(0xFF4CAF50),
+    primary: Color(0xFF0ABAC1),
+    primaryPressed: Color(0xFF0898A1),
+    accent: Color(0xFF2EE0F0),
+    background: Color(0xFF07181B),
+    surface: Color(0xFF0E2A2E),
+    textPrimary: Color(0xFFE6F7F8),
+    textSecondary: Color(0xFF9AC8CC),
+    textMuted: Color(0xFF6B9AA0),
+    success: Color(0xFF0ABAC1),
     warning: Color(0xFFE0A24A),
     error: Color(0xFFE57368),
-    border: Color(0xFF2A312E),
+    border: Color(0xFF1A3A3E),
   );
 
   @override

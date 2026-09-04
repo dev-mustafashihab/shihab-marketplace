@@ -6,6 +6,7 @@ import '../../core/session/session_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/widgets/unified_header.dart';
 import '../auth/login_screen.dart';
 import '../auth/register_screen.dart';
 import '../favorites/favorites_screen.dart';
@@ -36,8 +37,10 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(title: const Text('حسابي')),
-      body: ListView(
+      body: SafeArea(child: Column(children: [
+        const UnifiedHeader(),
+        const SizedBox(height: AppSpacing.s12),
+        Expanded(child: ListView(
         padding: const EdgeInsets.all(AppSpacing.screenH),
         children: [
           // بطاقة الحساب — تنقر للدخول إن زائر، وتعرض البريد/النوع إن مسجل
@@ -128,7 +131,8 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ],
         ],
-      ),
+      )),
+      ])),
     );
   }
 

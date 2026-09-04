@@ -27,7 +27,7 @@ class SearchQueryDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0.1) @Max(100) radiusKm?: number;
   @IsOptional() @Type(() => Boolean) @IsBoolean() openNow?: boolean;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) capacity?: number;
-  @IsOptional() @IsIn(['price', 'distance']) sort?: 'price' | 'distance';
+  @IsOptional() @IsIn(['price', 'distance', 'rating']) sort?: 'price' | 'distance' | 'rating';
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
 }

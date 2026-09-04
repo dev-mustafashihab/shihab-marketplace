@@ -9,8 +9,15 @@ import 'package:http/testing.dart';
 import 'package:marketplace_app/core/network/api_client.dart';
 import 'package:marketplace_app/main.dart';
 
+Response _json(Object data) => Response(
+      jsonEncode({'success': true, 'data': data}),
+      200,
+      headers: {'content-type': 'application/json'},
+    );
+
 void main() {
-  testWidgets('home search opens its own search sheet and filter controls', (tester) async {
+  testWidgets('home search opens unified sheet with collapsible filter sections',
+      (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const ProviderScope(child: MarketplaceApp()));
@@ -19,7 +26,8 @@ void main() {
     await tester.tap(find.byKey(const Key('home-search-filter-inline')));
     await tester.pumpAndSettle();
     expect(find.text('بحث سريع'), findsOneWidget);
-    expect(find.text('خيارات الفلترة'), findsOneWidget);
+    expect(find.text('التصنيف'), findsOneWidget);
+    expect(find.text('العملة والسعر'), findsOneWidget);
     await tester.tap(find.byTooltip('إغلاق'));
     await tester.pumpAndSettle();
 
@@ -28,12 +36,15 @@ void main() {
 
     expect(find.text('بحث سريع'), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('home-search-filter')));
+    // قسم العملة والسعر ينفتح وحده ويعرض مبدّل العملة المدمج
+    await tester.tap(find.text('العملة والسعر'));
     await tester.pumpAndSettle();
-    expect(find.text('خيارات الفلترة'), findsOneWidget);
+    expect(find.textContaining('العملة:'), findsOneWidget);
+    expect(find.text('حتى 200 دولار'), findsOneWidget);
   });
 
-  testWidgets('location selector lets the user choose a Syrian governorate', (tester) async {
+  testWidgets('location selector lets the user choose a Syrian governorate',
+      (tester) async {
     await tester.pumpWidget(const ProviderScope(child: MarketplaceApp()));
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
@@ -47,7 +58,8 @@ void main() {
     expect(find.text('حلب'), findsOneWidget);
   });
 
-  testWidgets('notification bell opens a visible notifications screen', (tester) async {
+  testWidgets('notification bell opens a visible notifications screen',
+      (tester) async {
     await tester.pumpWidget(const ProviderScope(child: MarketplaceApp()));
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
@@ -99,33 +111,25 @@ void main() {
     expect(queries.any((query) => query['q'] == 'قصر'), isTrue);
   });
 
-  testWidgets('category pill filters home vendors in place without navigation', (tester) async {
+  testWidgets('category inside search sheet filters home with summary chip',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     final vendorQueries = <Map<String, String>>[];
     final api = ApiClient(
       baseUrl: 'https://example.test',
       client: MockClient((request) async {
         final path = request.url.path;
         if (path.endsWith('/categories')) {
-          return Response(
-            jsonEncode({
-              'success': true,
-              'data': [
-                {'id': 'cat-1', 'nameAr': 'قاعات', 'slug': 'venues', 'iconKey': 'venue'},
-                {'id': 'cat-2', 'nameAr': 'مطاعم', 'slug': 'restaurants', 'iconKey': 'restaurant'},
-              ],
-            }),
-            200,
-            headers: {'content-type': 'application/json'},
-          );
+          return _json([
+            {'id': 'cat-1', 'nameAr': 'قاعات', 'slug': 'venues', 'iconKey': 'venue'},
+            {'id': 'cat-2', 'nameAr': 'مطاعم', 'slug': 'restaurants', 'iconKey': 'restaurant'},
+          ]);
         }
         if (path.endsWith('/vendors')) {
           vendorQueries.add(request.url.queryParameters);
         }
-        return Response(
-          jsonEncode({'success': true, 'data': []}),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
+        return _json([]);
       }),
     );
     await tester.pumpWidget(
@@ -136,25 +140,30 @@ void main() {
     );
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
-    // ما زلنا في الرئيسية ولم ننتقل لاستكشف
-    expect(find.text('التصنيفات'), findsOneWidget);
-    expect(find.text('مسح الفلتر'), findsNothing);
+    // لا صف تصنيفات في الرئيسية بعد النقل لداخل البحث
+    expect(find.text('التصنيفات'), findsNothing);
 
+    // اختيار التصنيف من داخل ورقة البحث
+    await tester.tap(find.text('قاعة أعراس؟ صالون؟ هدية؟'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('التصنيف'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('قاعات'));
     await tester.pumpAndSettle();
 
-    // الفلترة أُرسلت للباكند، وما زلنا في نفس الصفحة مع زر المسح
+    // الفلترة أُرسلت للباكند
     expect(vendorQueries.any((query) => query['categoryId'] == 'cat-1'), isTrue);
-    expect(find.text('التصنيفات'), findsOneWidget);
-    expect(find.text('مسح الفلتر'), findsOneWidget);
-    expect(find.text('لا نتائج في هذا التصنيف'), findsOneWidget);
 
-    // مسح الفلتر يعيد الكل
-    await tester.ensureVisible(find.text('عرض الكل'));
+    // إغلاق الورقة — ملخص الفلتر يظهر في الرئيسية مع حالة فارغة
+    await tester.tap(find.byTooltip('إغلاق'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('عرض الكل'));
+    expect(find.text('قاعات'), findsOneWidget);
+    expect(find.text('لا نتائج مطابقة للفلاتر'), findsOneWidget);
+
+    // مسح الكل يعيد القائمة بلا فلتر
+    await tester.tap(find.text('مسح الكل'));
     await tester.pumpAndSettle();
-    expect(find.text('مسح الفلتر'), findsNothing);
+    expect(find.text('قاعات'), findsNothing);
     expect(vendorQueries.last.containsKey('categoryId'), isFalse);
   });
 }

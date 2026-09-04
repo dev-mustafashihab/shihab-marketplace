@@ -10,6 +10,8 @@ import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/status_badge.dart' show BookingStatus, StatusBadge;
+import '../../core/widgets/unified_header.dart';
+import '../../core/widgets/press_scale.dart';
 import '../auth/login_screen.dart';
 
 /// حجوزاتي — FutureProvider يتابع الجلسة، بطاقات تفصيلية (بائع/خدمة/قاعة/سعر/مدة).
@@ -29,19 +31,25 @@ class MyBookingsScreen extends ConsumerWidget {
     final bookingsAsync = ref.watch(myBookingsProvider);
 
     if (token == null) {
-      return Scaffold(backgroundColor: c.background, appBar: AppBar(title: const Text('حجوزاتي')), body: EmptyState(
+      return Scaffold(backgroundColor: c.background, body: SafeArea(child: Column(children: [
+        const UnifiedHeader(),
+        const SizedBox(height: AppSpacing.s12),
+        Expanded(child: EmptyState(
         icon: Icons.calendar_month_rounded,
         title: 'حجوزاتك القادمة',
         message: 'سجّل دخولك لتتابع حجوزاتك القادمة والسابقة.',
         actionLabel: 'تسجيل الدخول',
-        onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen())),
-      ));
+        onAction: null,
+      )),
+      ])));
     }
 
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(title: const Text('حجوزاتي')),
-      body: bookingsAsync.when(
+      body: SafeArea(child: Column(children: [
+        const UnifiedHeader(),
+        const SizedBox(height: AppSpacing.s12),
+        Expanded(child: bookingsAsync.when(
         loading: () => Column(children: List.generate(4, (_) => const Padding(
           padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH, vertical: AppSpacing.s8),
           child: SkeletonLoader(height: 120),
@@ -72,7 +80,8 @@ class MyBookingsScreen extends ConsumerWidget {
             ),
           );
         },
-      ),
+      )),
+      ])),
     );
   }
 
@@ -108,10 +117,12 @@ class _BookingCard extends StatelessWidget {
         ? '${starts.hour}:${starts.minute.toString().padLeft(2, '0')}'
         : '';
 
-    return Container(
+    return PressScale(
+      onTap: () {},
+      child: Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: c.border)),
+          border: Border.all(color: c.border), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // رأس: مرجع + حالة
         Padding(
@@ -179,6 +190,7 @@ class _BookingCard extends StatelessWidget {
           ]),
         ),
       ]),
+    ),
     );
   }
 }

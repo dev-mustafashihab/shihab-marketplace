@@ -13,7 +13,7 @@ export interface SearchFilters {
   radiusKm?: number;
   openNow?: boolean;
   capacity?: number;
-  sort?: 'price' | 'distance';
+  sort?: 'price' | 'distance' | 'rating';
   page: number;
   limit: number;
 }
@@ -102,6 +102,8 @@ export class SearchService {
 
     const orderBy = f.sort === 'price'
       ? `ORDER BY v.min_price ASC NULLS LAST, v.is_open DESC, rr.average_rating DESC NULLS LAST, v.created_at DESC`
+      : f.sort === 'rating'
+      ? `ORDER BY rr.average_rating DESC NULLS LAST, v.is_open DESC, v.created_at DESC`
       : f.radiusKm !== undefined && f.lat !== undefined && f.lng !== undefined
       ? `ORDER BY distance_m ASC NULLS LAST`
       : `ORDER BY v.is_open DESC, rr.average_rating DESC NULLS LAST, v.created_at DESC`;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 import 'app_spacing.dart';
@@ -17,6 +18,7 @@ class AppTheme {
       brightness: c == AppColors.dark ? Brightness.dark : Brightness.light,
       scaffoldBackgroundColor: c.background,
       splashFactory: InkSparkle.splashFactory,
+      textTheme: GoogleFonts.cairoTextTheme(),
     );
 
     return base.copyWith(

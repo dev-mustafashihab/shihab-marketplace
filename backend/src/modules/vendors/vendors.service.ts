@@ -31,9 +31,21 @@ export class VendorsService {
   async list(query: ListVendorsQueryDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
+    // فلتر السعر — نفس دلالة /search: سعر البائع الأدنى ضمن الحد وبنفس العملة،
+    // ومن لا سعر له يُعامل كصفر (COALESCE) فيبقى ظاهراً
+    const priceFilter: Prisma.VendorWhereInput =
+      query.maxPrice !== undefined
+        ? {
+            AND: [
+              { OR: [{ minPrice: null }, { minPrice: { lte: query.maxPrice } }] },
+              ...(query.currency ? [{ currency: query.currency }] : []),
+            ],
+          }
+        : {};
     const where: Prisma.VendorWhereInput = {
       status: VendorStatus.APPROVED,
       ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+      ...priceFilter,
       ...(query.q
         ? {
             OR: [

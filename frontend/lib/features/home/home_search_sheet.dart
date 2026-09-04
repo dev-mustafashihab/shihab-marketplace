@@ -10,6 +10,8 @@ import '../../core/theme/app_typography.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/skeleton_loader.dart';
 import '../vendors/vendor_details_screen.dart';
+import 'models/home_feed.dart';
+import 'state/home_feed_provider.dart';
 
 Future<void> showHomeSearchSheet(
   BuildContext context,
@@ -40,14 +42,14 @@ class _HomeSearchSheetState extends ConsumerState<_HomeSearchSheet> {
   Timer? _debounce;
   Future<List<Map<String, dynamic>>>? _future;
   String _query = '';
-  double? _maxPrice;
-  String _currency = 'USD'; // USD | SYP | TRY
-  bool _filtersOpen = false;
+  // القسم المفتوح حالياً — قسم واحد فقط كل مرة لمنع الازدحام.
+  // 'category' | 'price' | null
+  String? _openSection;
 
   @override
   void initState() {
     super.initState();
-    _filtersOpen = widget.initialFiltersOpen;
+    _openSection = widget.initialFiltersOpen ? 'price' : null;
     _controller.addListener(_onQueryChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focusNode.requestFocus();
@@ -82,13 +84,18 @@ class _HomeSearchSheetState extends ConsumerState<_HomeSearchSheet> {
   }
 
   Future<List<Map<String, dynamic>>> _search() async {
+    // نتائج الورقة تحترم نفس فلاتر الرئيسية المشتركة (تصنيف/سعر/عملة)
+    final catId = ref.read(homeCategoryProvider);
+    final maxPrice = ref.read(homeMaxPriceProvider);
+    final currency = ref.read(homeCurrencyProvider);
     final query = <String, String>{
       'q': _query,
       'limit': '12',
+      if (catId != null) 'categoryId': catId,
       // الفلترة المزدوجة: العملة تُرسل مع السعر فقط
-      if (_maxPrice != null) ...{
-        'maxPrice': _maxPrice!.round().toString(),
-        'currency': _currency,
+      if (maxPrice != null) ...{
+        'maxPrice': maxPrice.round().toString(),
+        'currency': currency,
       },
     };
     final d = await ref.read(apiClientProvider).get('/search', query: query);
@@ -98,27 +105,30 @@ class _HomeSearchSheetState extends ConsumerState<_HomeSearchSheet> {
     return raw.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList();
   }
 
+  void _refreshResults() {
+    if (_query.isEmpty) return;
+    final future = _search();
+    setState(() {
+      _future = future;
+    });
+  }
+
   void _setPrice(double? value) {
-    setState(() => _maxPrice = value);
-    if (_query.isNotEmpty) {
-      final future = _search();
-      setState(() {
-        _future = future;
-      });
-    }
+    ref.read(homeMaxPriceProvider.notifier).state = value;
+    _refreshResults();
   }
 
   void _setCurrency(String code) {
-    setState(() {
-      _currency = code;
-      _maxPrice = null;
-    });
-    if (_query.isNotEmpty) {
-      final future = _search();
-      setState(() {
-        _future = future;
-      });
-    }
+    ref.read(homeCurrencyProvider.notifier).state = code;
+    ref.read(homeMaxPriceProvider.notifier).state = null;
+    _refreshResults();
+  }
+
+  void _setCategory(String? id) {
+    ref.read(homeCategoryProvider.notifier).state = id;
+    // طيّ القسم بعد الاختيار لتظهر النتائج فوراً
+    setState(() => _openSection = null);
+    _refreshResults();
   }
 
   void _openVendor(Map<String, dynamic> vendor) {
@@ -134,6 +144,22 @@ class _HomeSearchSheetState extends ConsumerState<_HomeSearchSheet> {
     final c = context.colors;
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
     final availableHeight = MediaQuery.sizeOf(context).height - bottom;
+    // الفلاتر المشتركة مع الرئيسية — أي تغيير هنا يفلتر الرئيسية فوراً
+    final catId = ref.watch(homeCategoryProvider);
+    final maxPrice = ref.watch(homeMaxPriceProvider);
+    final currency = ref.watch(homeCurrencyProvider);
+    final catsAsync = ref.watch(homeCategoriesProvider);
+    final hasFilters = catId != null || maxPrice != null;
+    String? catName;
+    final cats = catsAsync.valueOrNull;
+    if (cats != null) {
+      for (final t in cats) {
+        if (t.id == catId) {
+          catName = t.nameAr;
+          break;
+        }
+      }
+    }
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
       child: Container(
@@ -184,66 +210,129 @@ class _HomeSearchSheetState extends ConsumerState<_HomeSearchSheet> {
                 ),
               ),
               const SizedBox(width: AppSpacing.s8),
-              IconButton(
-                key: const Key('home-search-filter'),
-                onPressed: () => setState(() => _filtersOpen = !_filtersOpen),
-                style: IconButton.styleFrom(
-                  backgroundColor: _filtersOpen ? c.primary.withOpacity(0.12) : c.surface,
-                  foregroundColor: c.primary,
-                  side: BorderSide(color: _filtersOpen ? c.primary : c.border),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  fixedSize: const Size(48, 48),
+              // مسح الفلاتر — يظهر فقط عند وجود فلتر نشط
+              if (hasFilters)
+                IconButton(
+                  key: const Key('home-search-filter'),
+                  onPressed: () {
+                    clearHomeFilters(ref);
+                    _refreshResults();
+                  },
+                  style: IconButton.styleFrom(
+                    backgroundColor: c.primary.withOpacity(0.12),
+                    foregroundColor: c.primary,
+                    side: BorderSide(color: c.primary),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    fixedSize: const Size(48, 48),
+                  ),
+                  icon: const Icon(Icons.filter_alt_off_rounded),
+                  tooltip: 'مسح الفلاتر',
                 ),
-                icon: const Icon(Icons.tune_rounded),
-                tooltip: 'فلترة النتائج',
-              ),
             ]),
           ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            child: _filtersOpen
-                ? Padding(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.s16, AppSpacing.s8, AppSpacing.s16, 0),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(AppSpacing.s12),
-                      decoration: BoxDecoration(
-                        color: c.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: c.border),
+          const SizedBox(height: AppSpacing.s8),
+          // أقسام الفلاتر — قسم واحد مفتوح كل مرة لمنع الازدحام
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
+            child: Column(children: [
+              _FilterSection(
+                c: c,
+                icon: Icons.grid_view_rounded,
+                title: 'التصنيف',
+                value: catName ?? 'الكل',
+                open: _openSection == 'category',
+                onTap: () => setState(
+                    () => _openSection = _openSection == 'category' ? null : 'category'),
+                child: catsAsync.when(
+                  loading: () => const SkeletonLoader(height: 40),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (list) => Wrap(
+                    spacing: AppSpacing.s8,
+                    runSpacing: AppSpacing.s8,
+                    children: [
+                      _sheetChoice(c, 'الكل', catId == null, () => _setCategory(null)),
+                      for (final t in list)
+                        _sheetChoice(c, t.nameAr, catId == t.id,
+                            () => _setCategory(catId == t.id ? null : t.id)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s8),
+              _FilterSection(
+                c: c,
+                icon: Icons.payments_outlined,
+                title: 'العملة والسعر',
+                value: maxPrice == null
+                    ? currencyName(currency)
+                    : 'حتى ${maxPrice.round()} ${currencyName(currency)}',
+                open: _openSection == 'price',
+                onTap: () => setState(
+                    () => _openSection = _openSection == 'price' ? null : 'price'),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // مبدّل العملة المدمج — زر واحد بدل 3 شرائح
+                      PopupMenuButton<String>(
+                        onSelected: _setCurrency,
+                        itemBuilder: (_) => [
+                          for (final code in homeSupportedCurrencies)
+                            PopupMenuItem(
+                                value: code, child: Text(currencyName(code))),
+                        ],
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: c.primary.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: c.primary.withOpacity(0.4)),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.currency_exchange_rounded,
+                                size: 16, color: c.primary),
+                            const SizedBox(width: 4),
+                            Text('العملة: ${currencyName(currency)}',
+                                style: AppText.caption(c.primary)),
+                            Icon(Icons.keyboard_arrow_down_rounded,
+                                size: 16, color: c.primary),
+                          ]),
+                        ),
                       ),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('خيارات الفلترة', style: AppText.bodyL(c.textPrimary)),
-                        const SizedBox(height: AppSpacing.s8),
-                        Wrap(spacing: AppSpacing.s8, runSpacing: AppSpacing.s8, children: [
-                          _currencyChoice(c, 'دولار أمريكي', 'USD'),
-                          _currencyChoice(c, 'ليرة سورية', 'SYP'),
-                          _currencyChoice(c, 'ليرة تركية', 'TRY'),
-                        ]),
-                        const SizedBox(height: AppSpacing.s8),
-                        Wrap(spacing: AppSpacing.s8, runSpacing: AppSpacing.s8, children: [
-                          if (_currency == 'USD') ...[
-                            _priceChoice(c, 'الكل', null),
-                            _priceChoice(c, 'حتى 50 دولار', 50),
-                            _priceChoice(c, 'حتى 200 دولار', 200),
-                            _priceChoice(c, 'حتى 500 دولار', 500),
-                          ] else if (_currency == 'SYP') ...[
-                            _priceChoice(c, 'الكل', null),
-                            _priceChoice(c, 'حتى 100 ألف ل.س', 100000),
-                            _priceChoice(c, 'حتى 500 ألف ل.س', 500000),
-                            _priceChoice(c, 'مليون ل.س فأكثر', 1000000),
-                          ] else ...[
-                            _priceChoice(c, 'الكل', null),
-                            _priceChoice(c, 'حتى 500 ل.ت', 500),
-                            _priceChoice(c, 'حتى 2000 ل.ت', 2000),
-                            _priceChoice(c, '5000 ل.ت فأكثر', 5000),
-                          ],
-                        ]),
+                      const SizedBox(height: AppSpacing.s8),
+                      Wrap(spacing: AppSpacing.s8, runSpacing: AppSpacing.s8, children: [
+                        if (currency == 'USD') ...[
+                          _sheetChoice(c, 'الكل', maxPrice == null,
+                              () => _setPrice(null)),
+                          _sheetChoice(c, 'حتى 50 دولار', maxPrice == 50,
+                              () => _setPrice(50)),
+                          _sheetChoice(c, 'حتى 200 دولار', maxPrice == 200,
+                              () => _setPrice(200)),
+                          _sheetChoice(c, 'حتى 500 دولار', maxPrice == 500,
+                              () => _setPrice(500)),
+                        ] else if (currency == 'SYP') ...[
+                          _sheetChoice(c, 'الكل', maxPrice == null,
+                              () => _setPrice(null)),
+                          _sheetChoice(c, 'حتى 100 ألف ل.س', maxPrice == 100000,
+                              () => _setPrice(100000)),
+                          _sheetChoice(c, 'حتى 500 ألف ل.س', maxPrice == 500000,
+                              () => _setPrice(500000)),
+                          _sheetChoice(c, 'مليون ل.س فأكثر', maxPrice == 1000000,
+                              () => _setPrice(1000000)),
+                        ] else ...[
+                          _sheetChoice(c, 'الكل', maxPrice == null,
+                              () => _setPrice(null)),
+                          _sheetChoice(c, 'حتى 500 ل.ت', maxPrice == 500,
+                              () => _setPrice(500)),
+                          _sheetChoice(c, 'حتى 2000 ل.ت', maxPrice == 2000,
+                              () => _setPrice(2000)),
+                          _sheetChoice(c, '5000 ل.ت فأكثر', maxPrice == 5000,
+                              () => _setPrice(5000)),
+                        ],
                       ]),
-                    ),
-                  )
-                : const SizedBox.shrink(),
+                    ]),
+              ),
+            ]),
           ),
           const SizedBox(height: AppSpacing.s8),
           Expanded(child: _results(c)),
@@ -252,24 +341,11 @@ class _HomeSearchSheetState extends ConsumerState<_HomeSearchSheet> {
     );
   }
 
-  Widget _priceChoice(AppColors c, String label, double? value) {
-    final selected = _maxPrice == value;
+  Widget _sheetChoice(AppColors c, String label, bool selected, VoidCallback onTap) {
     return ChoiceChip(
       label: Text(label),
       selected: selected,
-      onSelected: (_) => _setPrice(value),
-      selectedColor: c.primary.withOpacity(0.14),
-      labelStyle: AppText.caption(selected ? c.primary : c.textSecondary),
-      side: BorderSide(color: selected ? c.primary : c.border),
-    );
-  }
-
-  Widget _currencyChoice(AppColors c, String label, String code) {
-    final selected = _currency == code;
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => _setCurrency(code),
+      onSelected: (_) => onTap(),
       selectedColor: c.primary.withOpacity(0.14),
       labelStyle: AppText.caption(selected ? c.primary : c.textSecondary),
       side: BorderSide(color: selected ? c.primary : c.border),
@@ -363,6 +439,74 @@ class _HomeSearchSheetState extends ConsumerState<_HomeSearchSheet> {
           },
         );
       },
+    );
+  }
+}
+
+/// قسم فلتر مطوي — رأسه يعرض القيمة الحالية دائماً، وجسمه ينفتح وحده
+/// (فتح قسم يغلق الآخر) لمنع ازدحام الورقة.
+class _FilterSection extends StatelessWidget {
+  const _FilterSection({
+    required this.c,
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.open,
+    required this.onTap,
+    required this.child,
+  });
+
+  final AppColors c;
+  final IconData icon;
+  final String title;
+  final String value;
+  final bool open;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: open ? c.primary : c.border),
+      ),
+      child: Column(children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12, vertical: AppSpacing.s8),
+            child: Row(children: [
+              Icon(icon, size: 18, color: open ? c.primary : c.textMuted),
+              const SizedBox(width: AppSpacing.s8),
+              Text(title, style: AppText.bodyM(open ? c.primary : c.textPrimary)),
+              const SizedBox(width: AppSpacing.s8),
+              Expanded(
+                child: Text(value,
+                    style: AppText.caption(c.textMuted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end),
+              ),
+              Icon(open ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                  size: 20, color: c.textMuted),
+            ]),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          child: open
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.s12, 0, AppSpacing.s12, AppSpacing.s12),
+                  child: child,
+                )
+              : const SizedBox.shrink(),
+        ),
+      ]),
     );
   }
 }

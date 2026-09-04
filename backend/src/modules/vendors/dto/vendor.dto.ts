@@ -101,6 +101,14 @@ export class ListVendorsQueryDto {
   @IsOptional() @Type(() => Number) @IsNumber()
   minRating?: number;
 
+  @ApiPropertyOptional({ example: 200 })
+  @IsOptional() @Type(() => Number) @IsNumber()
+  maxPrice?: number;
+
+  @ApiPropertyOptional({ enum: ['USD', 'SYP', 'TRY'] })
+  @IsOptional() @IsString()
+  currency?: string;
+
   @ApiPropertyOptional({ enum: VendorStatus, description: 'أدمن فقط' })
   @IsOptional() @IsEnum(VendorStatus)
   status?: VendorStatus;

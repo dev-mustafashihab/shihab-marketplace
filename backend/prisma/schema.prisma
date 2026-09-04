@@ -61,6 +61,7 @@ model User {
   favorites     Favorite[]
   notifications Notification[]
   media         Media[]
+  customerWallet CustomerWallet?
 
   @@map("users")
 }
@@ -511,6 +512,45 @@ model Wallet {
   transactions WalletTransaction[]
 
   @@map("wallets")
+}
+
+// ── محافظ الزبائن (أساسية: شحن من أدمن/وكيل لاحقاً + دفع حجوزات) ──
+model CustomerWallet {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  balance   Int      @default(0)
+  currency  String   @default("USD") @db.VarChar(3)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions CustomerWalletTx[]
+
+  @@map("customer_wallets")
+}
+
+model CustomerWalletTx {
+  id        String               @id @default(uuid()) @db.Uuid
+  walletId  String               @map("wallet_id") @db.Uuid
+  type      CustomerWalletTxType
+  amount    Int // موجب = دخول (شحن/استرداد)، سالب = خروج (دفع حجز)
+  currency  String               @default("USD") @db.VarChar(3)
+  refType   String?              @map("ref_type") @db.VarChar(20)
+  refId     String?              @map("ref_id") @db.Uuid
+  note      String?              @db.VarChar(255)
+  createdAt DateTime             @default(now()) @map("created_at")
+
+  wallet CustomerWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@map("customer_wallet_txs")
+}
+
+enum CustomerWalletTxType {
+  TOPUP // شحن رصيد (أدمن الآن، وكيل شحن لاحقاً)
+  PAYMENT // دفع حجز من الرصيد
+  REFUND // استرداد لرصيد الزبون
+  ADJUSTMENT // تسوية إدارية
 }
 
 model WalletTransaction {

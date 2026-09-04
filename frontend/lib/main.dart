@@ -14,7 +14,7 @@ class MarketplaceApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'سوق المناسبات',
+      title: 'دبرني',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       // darkTheme: AppTheme.dark(), // معمّر وجاهز — التفعيل في Phase 2

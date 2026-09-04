@@ -9,6 +9,8 @@ import '../../core/theme/app_typography.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/skeleton_loader.dart';
+import '../../core/widgets/unified_header.dart';
+import '../../core/widgets/press_scale.dart';
 import '../auth/login_screen.dart';
 
 /// طلباتي — بطاقات موسعة: بائع + منتجات + timeline حالات + عنوان وسعر.
@@ -28,19 +30,25 @@ class OrdersScreen extends ConsumerWidget {
     final ordersAsync = ref.watch(myOrdersProvider);
 
     if (token == null) {
-      return Scaffold(backgroundColor: c.background, appBar: AppBar(title: const Text('طلباتي')), body: EmptyState(
+      return Scaffold(backgroundColor: c.background, body: SafeArea(child: Column(children: [
+        const UnifiedHeader(),
+        const SizedBox(height: AppSpacing.s12),
+        Expanded(child: EmptyState(
         icon: Icons.receipt_long_rounded,
         title: 'طلباتك',
         message: 'تتبع طلبات المطاعم والهدايا لحظة بلحظة بعد تسجيل الدخول.',
         actionLabel: 'تسجيل الدخول',
-        onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen())),
-      ));
+        onAction: null,
+      )),
+      ])));
     }
 
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(title: const Text('طلباتي')),
-      body: ordersAsync.when(
+      body: SafeArea(child: Column(children: [
+        const UnifiedHeader(),
+        const SizedBox(height: AppSpacing.s12),
+        Expanded(child: ordersAsync.when(
         loading: () => Column(children: List.generate(4, (_) => const Padding(
           padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH, vertical: AppSpacing.s8),
           child: SkeletonLoader(height: 130),
@@ -71,7 +79,8 @@ class OrdersScreen extends ConsumerWidget {
             ),
           );
         },
-      ),
+      )),
+      ])),
     );
   }
 
@@ -100,10 +109,12 @@ class _OrderCard extends StatelessWidget {
     final status = (o['status'] ?? 'PENDING') as String;
     final created = DateTime.tryParse((o['createdAt'] ?? '') as String)?.toLocal();
 
-    return Container(
+    return PressScale(
+      onTap: () {},
+      child: Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: c.border)),
+          border: Border.all(color: c.border), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // رأس: مرجع + الحالة العربية ملونة
         Container(
@@ -178,6 +189,7 @@ class _OrderCard extends StatelessWidget {
           ]),
         ),
       ]),
+    ),
     );
   }
 

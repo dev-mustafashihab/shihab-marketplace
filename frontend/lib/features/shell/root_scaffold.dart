@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../../core/network/api_client.dart';
 import '../../core/session/session_service.dart';
 import '../home/models/home_feed.dart';
 import '../home/state/home_feed_provider.dart';
+import '../wallet/state/customer_wallet_provider.dart';
 import '../location/location_picker.dart';
+import '../services/services_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../home/home_search_sheet.dart';
 import '../vendors/vendor_details_screen.dart';
+import '../home/widgets/vendor_proximity_card.dart';
+import '../../core/widgets/unified_header.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
@@ -20,7 +27,7 @@ import '../../core/widgets/error_state.dart';
 import '../../core/widgets/skeleton_loader.dart';
 import '../../features/bookings/my_bookings_screen.dart';
 import '../../features/explore/explore_screen.dart';
-import '../../features/orders/orders_screen.dart';
+import '../../features/transfers/transfers_screen.dart';
 import '../../features/profile/profile_screen.dart';
 
 /// شريحة تصنيف رفيعة — أيقونة صغيرة واسم، تُفلتر الرئيسية مكانها.
@@ -252,9 +259,8 @@ class _RootScaffoldState extends ConsumerState<RootScaffold> {
   Widget build(BuildContext context) {
     final pages = [
       const HomeScreen(),
-      const ExploreScreen(),
-      const MyBookingsScreen(),
-      const OrdersScreen(),
+      const TransfersScreen(),
+      const ServicesScreen(),
       const ProfileScreen(),
     ];
     return AppShell(child: pages[_tab], currentIndex: _tab, onTap: (i) => setState(() => _tab = i));
@@ -644,6 +650,173 @@ class _HomeFilterHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant _HomeFilterHeaderDelegate oldDelegate) => true;
 }
 
+/// شريط الرصيد — EUR/USD/SYP حلقي 12px — Cairo/Inter
+class _HomeBalanceBar extends ConsumerStatefulWidget {
+  const _HomeBalanceBar();
+  @override
+  ConsumerState<_HomeBalanceBar> createState() => _HomeBalanceBarState();
+}
+
+class _HomeBalanceBarState extends ConsumerState<_HomeBalanceBar> {
+  static const _currencies = ['EUR', 'USD', 'SYP'];
+  late FixedExtentScrollController _ctrl;
+  int _lastIdx = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    final cur = ref.read(homeBalanceCurrencyProvider);
+    _lastIdx = _currencies.indexOf(cur);
+    if (_lastIdx < 0) _lastIdx = 1;
+    _ctrl = FixedExtentScrollController(initialItem: _lastIdx + 1000 * _currencies.length);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _step(int dir) {
+    final next = _ctrl.selectedItem + dir;
+    _ctrl.animateToItem(next, duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    var cur = ref.watch(homeBalanceCurrencyProvider);
+    if (!_currencies.contains(cur)) cur = 'USD';
+    final hidden = ref.watch(homeBalanceHiddenProvider);
+    // رصيد المحفظة الحقيقي (عملة واحدة أساسية) — باقي العملات 0 مؤقتاً
+    final wMap = ref.watch(customerWalletProvider).valueOrNull?['wallet'] as Map?;
+    final wCur = '${wMap?['currency'] ?? 'USD'}';
+    final wBal = (wMap?['balance'] as num?)?.toInt() ?? 0;
+    final display = hidden ? '••••' : (cur == wCur ? '$wBal' : '0');
+    final curIdx = _currencies.indexOf(cur);
+    if (curIdx != _lastIdx && _ctrl.hasClients) _lastIdx = curIdx;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+      height: 64,
+      color: Colors.transparent,
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          InkWell(
+            onTap: () => ref.read(homeBalanceHiddenProvider.notifier).state = !hidden,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: 38, height: 38,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: const Color(0xFFD2E9ED), borderRadius: BorderRadius.circular(10)),
+              child: HugeIcon(icon: hidden ? HugeIcons.strokeRoundedViewOff : HugeIcons.strokeRoundedView, color: const Color(0xFF8AA9AD), size: 18),
+            ),
+          ),
+          GestureDetector(
+            onVerticalDragEnd: (d) {
+              final v = d.primaryVelocity ?? 0;
+              if (v == 0) return;
+              _step(v < 0 ? 1 : -1);
+            },
+            child: SizedBox(
+              width: 56, height: 64,
+              child: ListWheelScrollView.useDelegate(
+                  controller: _ctrl,
+                  itemExtent: 22,
+                  diameterRatio: 1.6,
+                  perspective: 0.003,
+                  useMagnifier: false,
+                  overAndUnderCenterOpacity: 1.0,
+                  physics: const NeverScrollableScrollPhysics(),
+                  onSelectedItemChanged: (i) {
+                    final idx = i % _currencies.length;
+                    if (idx != _lastIdx) {
+                      _lastIdx = idx;
+                      ref.read(homeBalanceCurrencyProvider.notifier).state = _currencies[idx];
+                    }
+                  },
+                  childDelegate: ListWheelChildLoopingListDelegate(
+                    children: [
+                      for (final code in _currencies)
+                        Center(
+                          child: Builder(builder: (_) {
+                            final sel = code == cur;
+                            return AnimatedOpacity(
+                              duration: const Duration(milliseconds: 220),
+                              opacity: 1.0,
+                              child: AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOut,
+                                style: GoogleFonts.inter(fontSize: sel ? 17 : 11, fontWeight: sel ? FontWeight.w700 : FontWeight.w400, color: sel ? c.textPrimary : c.textMuted.withOpacity(0.6), letterSpacing: 0.6),
+                                child: Text(code),
+                              ),
+                            );
+                          }),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          const Spacer(),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            reverseDuration: Duration.zero,
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween<Offset>(begin: const Offset(0, 0.35), end: Offset.zero).animate(anim),
+                child: child,
+              ),
+            ),
+            child: Text(display, key: ValueKey(display), style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w600, color: c.textPrimary)),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+class _FintechServiceCard extends StatelessWidget {
+  const _FintechServiceCard({required this.icon, required this.label});
+  final List<List<dynamic>> icon; final String label;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(color: const Color(0xFF3AA7B4), borderRadius: BorderRadius.circular(12)),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        HugeIcon(icon: icon, color: Colors.white, size: 26, strokeWidth: 2.0),
+        const SizedBox(height: 4),
+        Text(label, style: GoogleFonts.cairo(fontSize: 9.5, fontWeight: FontWeight.w500, color: Colors.white)),
+      ]),
+    );
+  }
+}
+
+class _TransferCard extends StatelessWidget {
+  const _TransferCard({required this.name, required this.amount});
+  final String name; final String amount;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(color: const Color(0xFFCFE9ED), borderRadius: BorderRadius.circular(12)),
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(children: [
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          HugeIcon(icon: HugeIcons.strokeRoundedArrowUpRight01, color: const Color(0xFFD14B4B), size: 13),
+          const SizedBox(width: 4),
+          Text(amount, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFFD14B4B))),
+        ]),
+        const Spacer(),
+        Text(name, style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0A2E33))),
+        ]),
+      ),
+    );
+  }
+}
+
 /// Home — كما في التصميم المعتمد (موقع/بحث/تصنيفات/عروض/قريب منك).
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -653,28 +826,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  late final ScrollController _scrollController;
-  final ValueNotifier<double> _topOpacity = ValueNotifier<double>(1);
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController = ScrollController()..addListener(_handleScroll);
-  }
-
-  void _handleScroll() {
-    final opacity = (1 - (_scrollController.offset / 56)).clamp(0.0, 1.0);
-    if ((_topOpacity.value - opacity).abs() > 0.01) _topOpacity.value = opacity;
-  }
-
-  @override
-  void dispose() {
-    _scrollController
-      ..removeListener(_handleScroll)
-      ..dispose();
-    _topOpacity.dispose();
-    super.dispose();
-  }
 
   void _openNearby(BuildContext context) {
     if (ref.read(userLocationProvider) == null) {
@@ -689,204 +840,120 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final vendorsAsync = ref.watch(homeVendorsProvider);
-    final catsAsync = ref.watch(homeCategoriesProvider);
-    final topIdentity = Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, AppSpacing.s12, AppSpacing.screenH, 0),
-      child: Column(children: [
-        Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Builder(builder: (context) {
-              final h = DateTime.now().hour;
-              final greet = h < 12 ? 'صباح الخير' : (h < 18 ? 'مساء النور' : 'مساء الخير');
-              return Text(greet, style: AppText.caption(c.textMuted));
-            }),
-            const SizedBox(height: AppSpacing.s4),
-            InkWell(
-              onTap: () => showLocationPicker(context, ref),
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12, horizontal: AppSpacing.s4),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.location_on_rounded, size: 20, color: c.primary),
-                  const SizedBox(width: AppSpacing.s4),
-                  Flexible(child: Text(ref.watch(userCityProvider),
-                      style: AppText.headingS(c.textPrimary),
-                      maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: c.textMuted),
+    final topIdentity = const UnifiedHeader(showDivider: false);
+    // الرئيسية الآن محفظة فقط — باقي المحتوى انتقل لقسم خدمات
+    return Scaffold(
+      backgroundColor: const Color(0xFFDDF1F4),
+      body: SafeArea(
+        child: Stack(children: [
+          // علامة مائية — شعار شفاف بالوسط مثل الصورة
+          Positioned.fill(
+            child: Center(
+              child: Opacity(
+                opacity: 0.04,
+                child: Image.asset('assets/images/dabirni.png', width: 310, height: 310, fit: BoxFit.contain),
+              ),
+            ),
+          ),
+        Column(
+          children: [
+            topIdentity,
+            const _HomeBalanceBar(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  // يسار الصورة: أزرار كبيرة عمودية 57%
+                  Expanded(
+                    flex: 57,
+                    child: Column(children: [
+                      Container(
+                        height: 66,
+                        decoration: BoxDecoration(color: const Color(0xFF8EBE98), borderRadius: BorderRadius.circular(14)),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {},
+                            borderRadius: BorderRadius.circular(14),
+                            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                              Text('استقبال', style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                              const SizedBox(width: 6),
+                              const HugeIcon(icon: HugeIcons.strokeRoundedArrowTurnDown, color: Colors.white, size: 22, strokeWidth: 2.2),
+                            ]),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      Container(
+                        height: 66,
+                        decoration: BoxDecoration(color: const Color(0xFFB86169), borderRadius: BorderRadius.circular(14)),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {},
+                            borderRadius: BorderRadius.circular(14),
+                            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                              Text('إرسال', style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                              const SizedBox(width: 6),
+                              const HugeIcon(icon: HugeIcons.strokeRoundedArrowTurnUp, color: Colors.white, size: 22, strokeWidth: 2.2),
+                            ]),
+                          ),
+                        ),
+                      ),
+                    ]),
+                  ),
+                  const SizedBox(width: 20),
+                  // يمين الصورة: شبكة 2x2 داخل حاوية خارجية 43%
+                  Expanded(
+                    flex: 43,
+                    child: SizedBox(
+                      height: 147,
+                      child: Column(children: [
+                        Expanded(
+                          child: Row(children: const [
+                            Expanded(child: _FintechServiceCard(icon: HugeIcons.strokeRoundedBookmark01, label: 'خدماتي')),
+                            SizedBox(width: 15),
+                            Expanded(child: _FintechServiceCard(icon: HugeIcons.strokeRoundedLayers01, label: 'مدفوعاتي')),
+                          ]),
+                        ),
+                        const SizedBox(height: 15),
+                        Expanded(
+                          child: Row(children: const [
+                            Expanded(child: _FintechServiceCard(icon: HugeIcons.strokeRoundedBank, label: 'بنوك')),
+                            SizedBox(width: 15),
+                            Expanded(child: _FintechServiceCard(icon: HugeIcons.strokeRoundedCardExchange01, label: 'حوالات')),
+                          ]),
+                        ),
+                      ]),
+                    ),
+                  ),
                 ]),
               ),
             ),
-          ])),
-          _BellButton(c: c),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
+              child: Row(children: [
+                Text('آخر المدفوعات', style: GoogleFonts.cairo(fontSize: 17, fontWeight: FontWeight.w700, color: Color(0xFF0A2E33))),
+                const Spacer(),
+              ]),
+            ),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                itemCount: 3,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (_, i) => const _TransferCard(
+                  name: 'وزارة التعليم العالي',
+                  amount: 'SYP 25,000',
+                ),
+              ),
+            ),
+          ],
+        ),
         ]),
-        const SizedBox(height: AppSpacing.s8),
-        Container(
-          height: 2,
-          width: 56,
-          decoration: BoxDecoration(color: c.accent, borderRadius: BorderRadius.circular(2)),
-        ),
-      ]),
-    );
-    final filterBar = _HomeFilterBar(
-      c: c,
-      onSearch: () => showHomeSearchSheet(context, ref),
-      onFilter: () => showHomeSearchSheet(context, ref, openFilters: true),
-      onOpenNow: () => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => const ExploreScreen(openNow: true),
-      )),
-      onNearby: () => _openNearby(context),
-      onLowestPrice: () => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => const ExploreScreen(lowestPrice: true),
-      )),
-    );
-
-    return Scaffold(
-      backgroundColor: c.background,
-      body: SafeArea(
-        child: RefreshIndicator(
-          color: c.primary,
-          onRefresh: () async {
-            ref.invalidate(homeVendorsProvider);
-            ref.invalidate(homeCategoriesProvider);
-          },
-          child: CustomScrollView(
-            controller: _scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(
-                child: ValueListenableBuilder<double>(
-                  valueListenable: _topOpacity,
-                  child: topIdentity,
-                  builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
-                ),
-              ),
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _HomeFilterHeaderDelegate(child: filterBar, height: 124),
-              ),
-              SliverToBoxAdapter(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const SizedBox(height: AppSpacing.s20),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                    child: Row(children: [
-                      Text('التصنيفات', style: AppText.headingM(c.textPrimary)),
-                      const Spacer(),
-                      if (ref.watch(homeCategoryProvider) != null)
-                        TextButton(
-                          onPressed: () => ref.read(homeCategoryProvider.notifier).state = null,
-                          child: const Text('مسح الفلتر'),
-                        ),
-                    ]),
-                  ),
-                  const SizedBox(height: AppSpacing.s8),
-                  catsAsync.when(
-                    loading: () => SizedBox(
-                      height: 52,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                        itemCount: 4,
-                        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.s8),
-                        itemBuilder: (_, __) => const SkeletonLoader(
-                          width: 110,
-                          height: 40,
-                          borderRadius: BorderRadius.all(Radius.circular(10)),
-                        ),
-                      ),
-                    ),
-                    error: (_, __) => const SizedBox.shrink(),
-                    data: (cats) {
-                      final shown = cats.toList();
-                      final activeId = ref.watch(homeCategoryProvider);
-                      if (shown.isEmpty) return const SizedBox.shrink();
-                      return SizedBox(
-                        height: 52,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                          itemCount: shown.length + 1,
-                          separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.s8),
-                          itemBuilder: (context, i) {
-                            if (i == 0) {
-                              return _CategoryAll(
-                                selected: activeId == null,
-                                onTap: () => ref.read(homeCategoryProvider.notifier).state = null,
-                              );
-                            }
-                            final cat = shown[i - 1];
-                            final id = cat.id;
-                            return _CategoryCard(
-                              name: cat.nameAr,
-                              slug: cat.slug,
-                              iconKey: cat.iconKey,
-                              selected: activeId == id,
-                              onTap: () => ref.read(homeCategoryProvider.notifier).state =
-                                  activeId == id ? null : id,
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.s24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                    child: Row(children: [
-                      Icon(Icons.near_me_rounded, size: 16, color: c.primary),
-                      const SizedBox(width: AppSpacing.s4),
-                      Text(ref.watch(userLocationProvider) != null ? 'الأقرب إليك' : 'مميز لك',
-                          style: AppText.headingM(c.textPrimary)),
-                    ]),
-                  ),
-                  const SizedBox(height: AppSpacing.s12),
-                ]),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                sliver: vendorsAsync.when(
-                  loading: () => const SliverToBoxAdapter(child: Column(
-                    children: [
-                      Padding(padding: EdgeInsets.only(bottom: AppSpacing.s12), child: SkeletonLoader(height: 120)),
-                      Padding(padding: EdgeInsets.only(bottom: AppSpacing.s12), child: SkeletonLoader(height: 120)),
-                      Padding(padding: EdgeInsets.only(bottom: AppSpacing.s12), child: SkeletonLoader(height: 120)),
-                    ],
-                  )),
-                  error: (_, __) => SliverToBoxAdapter(child: ErrorState(
-                    message: 'تعذر تحميل البائعين، تحقق من اتصالك',
-                    onRetry: () { ref.invalidate(homeVendorsProvider); },
-                  )),
-                  data: (vendors) {
-                    final filtered = ref.watch(homeCategoryProvider) != null;
-                    if (vendors.isEmpty) {
-                      return SliverToBoxAdapter(child: EmptyState(
-                        icon: Icons.store_mall_directory_outlined,
-                        title: filtered ? 'لا نتائج في هذا التصنيف' : 'لا يوجد بائعون بعد',
-                        message: filtered
-                            ? 'جرّب تصنيفاً آخر أو اعرض الكل.'
-                            : 'البائعون القريبون منك سيظهرون هنا.',
-                        actionLabel: filtered ? 'عرض الكل' : 'استكشف الخدمات',
-                        onAction: filtered
-                            ? () => ref.read(homeCategoryProvider.notifier).state = null
-                            : () => Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (_) => const ExploreScreen(),
-                                )),
-                      ));
-                    }
-                    return SliverList.separated(
-                      itemCount: vendors.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s12),
-                      itemBuilder: (context, i) => _VendorProximityCard(v: vendors[i]),
-                    );
-                  },
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.s32)),
-            ],
-          ),
-        ),
       ),
     );
   }
+
 }

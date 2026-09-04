@@ -247,7 +247,7 @@ class LatLng {
 final userLocationProvider = StateProvider<LatLng?>((ref) => null);
 
 /// اسم المدينة المعروض في الشريط العلوي
-final userCityProvider = StateProvider<String>((ref) => 'دمشق');
+final userCityProvider = StateProvider<String>((ref) => 'حلب');
 
 /// طلب موقع GPS من الواجهة بعد ضغط المستخدم، بلا طلب صامت عند الإقلاع.
 Future<LocationResult> acquireLocationResult(WidgetRef ref, {LocationService? service}) async {
@@ -266,7 +266,6 @@ Future<bool> acquireLocation(WidgetRef ref) async {
 
 /// إحداثيات مدن سوريا الرئيسية — للاختيار اليدوي
 const SYRIA_CITIES = <String, LatLng>{
-  'دمشق': LatLng(lat: 33.5138, lng: 36.2765),
   'ريف دمشق': LatLng(lat: 33.4700, lng: 36.3000),
   'حلب': LatLng(lat: 36.2021, lng: 37.1343),
   'حمص': LatLng(lat: 34.7324, lng: 36.7137),
