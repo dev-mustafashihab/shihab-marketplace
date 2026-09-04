@@ -14,6 +14,7 @@ import '../bookings/my_bookings_screen.dart';
 import '../favorites/favorites_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../transfers/transfers_screen.dart';
+import 'account_info_screen.dart';
 
 /// حسابي — خلفية Gradient + أقسام منظمة + هيدر ثابت (RTL كامل).
 class ProfileScreen extends ConsumerWidget {
@@ -120,7 +121,7 @@ class ProfileScreen extends ConsumerWidget {
                         _MenuTile(
                           icon: Icons.person_outline_rounded,
                           title: 'البيانات الشخصية',
-                          onTap: () => _push(context, const ProfileDetailsScreen()),
+                          onTap: () => _push(context, const AccountInfoScreen()),
                         ),
                         if (!isVendor) ...[
                           _Divider(),
