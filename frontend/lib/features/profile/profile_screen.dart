@@ -109,7 +109,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                         isVendor ? const RegisterScreen() : const AccountInfoScreen(),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     _StandaloneCard(
                       icon: Icons.verified_outlined,
                       title: 'توثيق الحساب',
@@ -117,14 +117,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       onTap: () => _push(const AccountInfoScreen()),
                     ),
                     if (!isVendor) ...[
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       _StandaloneCard(
                         icon: Icons.calendar_month_outlined,
                         title: 'حجوزاتي',
                         onTap: () => _push(const MyBookingsScreen()),
                       ),
                     ],
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     _StandaloneCard(
                       icon: Icons.favorite_border,
                       title: 'المفضلة',
@@ -138,13 +138,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       title: 'رمز الدخول (PIN)',
                       onTap: () => _push(const SecurityScreen()),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     _StandaloneCard(
                       icon: Icons.security_outlined,
                       title: 'الأمان والتحقق',
                       onTap: () => _push(const SecurityScreen()),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     _StandaloneCard(
                       icon: Icons.devices_outlined,
                       title: 'إدارة الأجهزة',
@@ -159,26 +159,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       trailing: 'فاتح',
                       onTap: () {},
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     _StandaloneCard(
                       icon: Icons.language_outlined,
                       title: 'اللغة',
                       trailing: 'العربية',
                       onTap: () {},
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     _StandaloneCard(
                       icon: Icons.help_outline_rounded,
                       title: 'الدعم والمساعدة',
                       onTap: () {},
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     _StandaloneCard(
                       icon: Icons.description_outlined,
                       title: 'الشروط والخصوصية',
                       onTap: () {},
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     _StandaloneCard(
                       icon: Icons.info_outline_rounded,
                       title: 'حول التطبيق',
@@ -191,7 +191,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     // ── تسجيل الخروج ──
                     _LogoutCard(onTap: () => _confirmLogout(context, ref)),
 
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
 
                     // ── حذف الحساب ──
                     _DeleteAccountCard(onTap: () => _confirmDelete(context)),
@@ -251,30 +251,78 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   }
 
   Future<void> _confirmDelete(BuildContext ctx) async {
-    final ok = await showDialog<bool>(
+    // الخطوة الأولى: تأكيد عام
+    final step1 = await showDialog<bool>(
       context: ctx,
       builder: (d) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(children: const [
+          title: const Row(children: [
             Icon(Icons.warning_amber_rounded, color: Color(0xFFE5392B), size: 22),
             SizedBox(width: 8),
             Text('حذف الحساب'),
           ]),
-          content: const Text('هذا الإجراء لا رجعة فيه. سيتم حذف جميع بياناتك نهائياً. هل أنت متأكد؟'),
+          content: const Text('سيتم حذف حسابك نهائياً مع جميع البيانات. هل تريد المتابعة؟'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('إلغاء')),
             TextButton(
               onPressed: () => Navigator.pop(d, true),
               style: TextButton.styleFrom(foregroundColor: const Color(0xFFE5392B)),
-              child: const Text('حذف نهائي'),
+              child: const Text('متابعة'),
             ),
           ],
         ),
       ),
     );
-    if (ok == true && ctx.mounted) {
+    if (step1 != true || !ctx.mounted) return;
+
+    // الخطوة الثانية: كتابة "حذف" للتأكيد
+    final confirmCtrl = TextEditingController();
+    final step2 = await showDialog<bool>(
+      context: ctx,
+      builder: (d) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(children: [
+            Icon(Icons.delete_forever_rounded, color: Color(0xFFE5392B), size: 22),
+            SizedBox(width: 8),
+            Text('تأكيد نهائي'),
+          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('اكتب "حذف" في الحقل لتأكيد الحذف:'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmCtrl,
+                decoration: InputDecoration(
+                  hintText: 'اكتب حذف',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('إلغاء')),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: confirmCtrl,
+              builder: (_, v, __) => TextButton(
+                onPressed: v.text.trim() == 'حذف' ? () => Navigator.pop(d, true) : null,
+                style: TextButton.styleFrom(
+                  foregroundColor: v.text.trim() == 'حذف' ? const Color(0xFFE5392B) : null,
+                  disabledForegroundColor: Colors.grey,
+                ),
+                child: const Text('حذف نهائي'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    confirmCtrl.dispose();
+    if (step2 == true && ctx.mounted) {
       ScaffoldMessenger.of(ctx).showSnackBar(
         const SnackBar(content: Text('تم إرسال طلب حذف الحساب')),
       );

@@ -317,7 +317,7 @@ class _TransfersScreenState extends ConsumerState<TransfersScreen> {
   }
 }
 
-/// خطأ مدمج أعلى القائمة — بدون فراغ ضخم.
+/// خطأ ودي أعلى القائمة — أيقونة خفيفة + إعادة محاولة.
 class _TransfersError extends StatelessWidget {
   const _TransfersError({required this.onRetry});
   final VoidCallback onRetry;
@@ -328,30 +328,35 @@ class _TransfersError extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.error_outline_rounded, size: 44, color: c.error),
-        const SizedBox(height: AppSpacing.s12),
+        Container(
+          width: 72, height: 72,
+          decoration: BoxDecoration(
+            color: c.primary.withOpacity(0.08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.cloud_off_rounded, size: 36, color: c.textMuted),
+        ),
+        const SizedBox(height: AppSpacing.s16),
         Text('تعذر تحميل التحويلات',
             style: AppText.headingS(c.textPrimary),
             textAlign: TextAlign.center),
         const SizedBox(height: AppSpacing.s8),
-        Text('حدث خطأ أثناء تحميل بيانات التحويلات',
-            style: AppText.bodyM(c.textSecondary),
+        Text('تحقق من اتصالك بالإنترنت وحاول مرة أخرى',
+            style: AppText.bodyM(c.textMuted),
             textAlign: TextAlign.center),
-        const SizedBox(height: AppSpacing.s16),
+        const SizedBox(height: AppSpacing.s20),
         FilledButton.icon(
           style: FilledButton.styleFrom(
             backgroundColor: c.primary,
             minimumSize: const Size(0, 48),
-            padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.s24),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s24),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.s),
             ),
           ),
           onPressed: onRetry,
           icon: const Icon(Icons.refresh_rounded, size: 20),
-          label:
-              Text('إعادة المحاولة', style: AppText.button(Colors.white)),
+          label: Text('إعادة المحاولة', style: AppText.button(Colors.white)),
         ),
       ],
     );
@@ -725,23 +730,27 @@ class _AdvancedFilterSheetState
 
   Widget _seg(
       AppColors c, String label, bool sel, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.full),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.s16,
-          vertical: AppSpacing.s8,
-        ),
-        decoration: BoxDecoration(
-          color: sel ? c.primary : c.background,
-          borderRadius: BorderRadius.circular(AppRadius.full),
-          border: Border.all(color: sel ? c.primary : c.border),
-        ),
-        child: Text(
-          label,
-          style: AppText.caption(sel ? Colors.white : c.textSecondary)
-              .copyWith(fontWeight: FontWeight.w600),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s16,
+            vertical: AppSpacing.s8,
+          ),
+          decoration: BoxDecoration(
+            color: sel ? c.primary : c.surface,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            border: Border.all(color: sel ? c.primary : c.border, width: sel ? 1.5 : 1),
+            boxShadow: sel ? [BoxShadow(color: c.primary.withOpacity(0.2), blurRadius: 6, offset: const Offset(0, 2))] : null,
+          ),
+          child: Text(
+            label,
+            style: AppText.caption(sel ? Colors.white : c.textSecondary)
+                .copyWith(fontWeight: sel ? FontWeight.w700 : FontWeight.w500),
+          ),
         ),
       ),
     );
