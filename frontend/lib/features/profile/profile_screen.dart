@@ -15,13 +15,7 @@ import '../favorites/favorites_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../transfers/transfers_screen.dart';
 
-/// حسابي — الملف الشخصي والمحفظة بتصميم نظيف (RTL كامل).
-///
-/// * ترويسة: جرس الإشعارات مع شارة غير المقروء + أيقونة الأمان.
-/// * بطاقة المستخدم: أفاتار بالأحرف الأولى + شارة التوثيق + الاسم الثلاثي
-///   + رقم الحساب (4-4-4-4) مع نسخ + شارة نوع الحساب.
-/// * بطاقة خيارات واحدة: التوثيق، حجوزاتي، سجل المحفظة، المفضلة، الأمان وPIN.
-/// * خروج Outline أحمر مع مسافة أمان من الشريط السفلي.
+/// حسابي — خلفية Gradient + كل عنصر بطاقة مستقلة (RTL كامل).
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -38,82 +32,138 @@ class ProfileScreen extends ConsumerWidget {
     final isVendor = role == 'VENDOR';
 
     return Scaffold(
-      backgroundColor: c.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screenH,
-            AppSpacing.s12,
-            AppSpacing.screenH,
-            32, // مسافة أمان من الشريط السفلي وزر QR
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _ProfileHeader(loggedIn: loggedIn),
-              const SizedBox(height: AppSpacing.s12),
-              _UserInfoCard(
-                loggedIn: loggedIn,
-                isVendor: isVendor,
-                email: email,
-                profile: profile,
-              ),
-              if (loggedIn && !isVendor) ...[
-                const SizedBox(height: AppSpacing.s12),
-                _KycBanner(profile: profile),
-              ],
-              if (!loggedIn) ...[
-                const SizedBox(height: AppSpacing.s12),
-                ElevatedButton.icon(
-                  onPressed: () => _push(context, const LoginScreen()),
-                  icon: const Icon(Icons.login_rounded, size: 20),
-                  label: const Text('تسجيل الدخول'),
-                  style: ElevatedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50)),
-                ),
-                const SizedBox(height: AppSpacing.s8),
-                OutlinedButton.icon(
-                  onPressed: () =>
-                      _push(context, const WalletRegisterScreen()),
-                  icon: const Icon(Icons.account_balance_wallet_outlined,
-                      size: 20),
-                  label: const Text('أنشئ محفظة جديدة'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50),
-                    foregroundColor: c.primary,
-                    side: BorderSide(color: c.primary.withOpacity(0.4)),
-                  ),
-                ),
-              ],
-              const SizedBox(height: AppSpacing.s16),
-              if (loggedIn)
-                _MenuCard(isVendor: isVendor)
-              else
-                const _MenuCard(isVendor: false, guest: true),
-              if (loggedIn) ...[
-                const SizedBox(height: AppSpacing.s16),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    ref.read(sessionTokenProvider.notifier).state = null;
-                    await SessionService.saveToken(null);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('تم تسجيل الخروج'),
-                            duration: Duration(seconds: 1)),
-                      );
-                    }
-                  },
-                  icon: Icon(Icons.logout_rounded, size: 20, color: c.error),
-                  label: Text('تسجيل الخروج',
-                      style: TextStyle(color: c.error)),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50),
-                    side: BorderSide(color: c.error.withOpacity(0.4)),
-                  ),
-                ),
-              ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              c.primary.withOpacity(0.95),
+              c.primary.withOpacity(0.7),
+              c.background,
             ],
+            stops: const [0.0, 0.35, 0.6],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenH,
+              AppSpacing.s12,
+              AppSpacing.screenH,
+              32,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // هيدر: جرس + عنوان + إعدادات
+                _ProfileHeader(loggedIn: loggedIn),
+                const SizedBox(height: AppSpacing.s20),
+
+                // بطاقة المستخدم — على الخلفية المتدرجة
+                _UserInfoCard(
+                  loggedIn: loggedIn,
+                  isVendor: isVendor,
+                  email: email,
+                  profile: profile,
+                ),
+
+                // تنبيه التوثيق
+                if (loggedIn && !isVendor) ...[
+                  const SizedBox(height: AppSpacing.s12),
+                  _KycBanner(profile: profile),
+                ],
+
+                // أزرار الدخول للزوار
+                if (!loggedIn) ...[
+                  const SizedBox(height: AppSpacing.s16),
+                  _GradientButton(
+                    label: 'تسجيل الدخول',
+                    icon: Icons.login_rounded,
+                    onTap: () => _push(context, const LoginScreen()),
+                  ),
+                  const SizedBox(height: AppSpacing.s12),
+                  _OutlineButton(
+                    label: 'أنشئ محفظة جديدة',
+                    icon: Icons.account_balance_wallet_outlined,
+                    onTap: () => _push(context, const WalletRegisterScreen()),
+                  ),
+                ],
+
+                const SizedBox(height: AppSpacing.s20),
+
+                // كل عنصر بطاقة مستقلة
+                if (loggedIn) ...[
+                  _MenuTile(
+                    icon: Icons.badge_outlined,
+                    title: 'الملفي الشخصي والتوثيق',
+                    onTap: () => _push(
+                      context,
+                      isVendor ? const RegisterScreen() : const ProfileDetailsScreen(),
+                    ),
+                  ),
+                  if (!isVendor) ...[
+                    const SizedBox(height: 10),
+                    _MenuTile(
+                      icon: Icons.calendar_month_outlined,
+                      title: 'حجوزاتي',
+                      onTap: () => _push(context, const MyBookingsScreen()),
+                    ),
+                    const SizedBox(height: 10),
+                    _MenuTile(
+                      icon: Icons.receipt_long_outlined,
+                      title: 'سجل عمليات المحفظة',
+                      onTap: () => _push(context, const TransfersScreen()),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  _MenuTile(
+                    icon: Icons.favorite_border,
+                    title: 'المفضلة',
+                    onTap: () => _push(context, const FavoritesScreen()),
+                  ),
+                  const SizedBox(height: 10),
+                  _MenuTile(
+                    icon: Icons.lock_outline_rounded,
+                    title: 'الأمان وتغيير رمز الـ PIN',
+                    onTap: () => _push(context, const SecurityScreen()),
+                  ),
+                  if (isVendor) ...[
+                    const SizedBox(height: 10),
+                    _MenuTile(
+                      icon: Icons.storefront_rounded,
+                      title: 'متجري (حساب تجاري)',
+                      onTap: () => _push(context, const MyVendorScreen()),
+                    ),
+                  ],
+                ] else ...[
+                  _MenuTile(
+                    icon: Icons.favorite_border,
+                    title: 'المفضلة',
+                    onTap: () => _push(context, const FavoritesScreen()),
+                  ),
+                ],
+
+                // خروج
+                if (loggedIn) ...[
+                  const SizedBox(height: AppSpacing.s24),
+                  _LogoutButton(
+                    onTap: () async {
+                      ref.read(sessionTokenProvider.notifier).state = null;
+                      await SessionService.saveToken(null);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('تم تسجيل الخروج'),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
@@ -125,75 +175,69 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-/// الترويسة: جرس مع شارة + إعدادات (الأمان) — بلا UnifiedHeader هنا حسب التصميم.
+// ─────────────────────── الهيدر ───────────────────────
+
 class _ProfileHeader extends ConsumerWidget {
   const _ProfileHeader({required this.loggedIn});
   final bool loggedIn;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.colors;
-    final unread = loggedIn
-        ? ref.watch(_unreadProvider).valueOrNull ?? 0
-        : 0;
+    final unread = loggedIn ? ref.watch(_unreadProvider).valueOrNull ?? 0 : 0;
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Row(children: [
-        // جرس يسار مع شارة العداد
+        // جرس يسار + شارة العداد
         Stack(clipBehavior: Clip.none, children: [
           IconButton(
             tooltip: 'الإشعارات',
             onPressed: !loggedIn
                 ? null
                 : () => Navigator.of(context)
-                    .push(MaterialPageRoute(
-                        builder: (_) => const NotificationsScreen()))
+                    .push(MaterialPageRoute(builder: (_) => const NotificationsScreen()))
                     .then((_) => ref.invalidate(_unreadProvider)),
-            icon: Icon(Icons.notifications_none_rounded,
-                size: 26, color: c.textPrimary),
+            icon: const Icon(Icons.notifications_none_rounded, size: 26, color: Colors.white),
           ),
           if (unread > 0)
             Positioned(
               right: 6,
               top: 6,
               child: Container(
-                constraints:
-                    const BoxConstraints(minWidth: 18, minHeight: 18),
+                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 decoration: BoxDecoration(
-                  color: c.error,
+                  color: const Color(0xFFE53935),
                   borderRadius: BorderRadius.circular(9),
-                  border: Border.all(color: c.background, width: 1.5),
+                  border: Border.all(color: Colors.white, width: 1.5),
                 ),
                 child: Center(
-                  child: Text(unread > 99 ? '99+' : '$unread',
-                      textDirection: TextDirection.ltr,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700)),
+                  child: Text(
+                    unread > 99 ? '99+' : '$unread',
+                    textDirection: TextDirection.ltr,
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
             ),
         ]),
         const Spacer(),
-        Text('حسابي', style: AppText.headingM(c.textPrimary)),
+        Text('حسابي', style: AppText.headingM(Colors.white)),
         const Spacer(),
-        // أيقونة الأمان يمين
+        // إعدادات يمين
         IconButton(
           tooltip: 'الأمان',
           onPressed: !loggedIn
               ? null
-              : () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => const SecurityScreen())),
-          icon: Icon(Icons.settings_outlined, size: 26, color: c.textPrimary),
+              : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SecurityScreen())),
+          icon: const Icon(Icons.settings_outlined, size: 26, color: Colors.white),
         ),
       ]),
     );
   }
 }
 
-/// بطاقة المستخدم: أفاتار + شارة توثيق + الاسم + رقم الحساب + نوع الحساب.
+// ─────────────────────── بطاقة المستخدم ───────────────────────
+
 class _UserInfoCard extends StatelessWidget {
   const _UserInfoCard({
     required this.loggedIn,
@@ -208,8 +252,7 @@ class _UserInfoCard extends StatelessWidget {
   final Map<String, dynamic> profile;
 
   static String _initials(String name) {
-    final parts =
-        name.trim().split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+    final parts = name.trim().split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.characters.first;
     return '${parts.first.characters.first}${parts.last.characters.first}';
@@ -223,293 +266,235 @@ class _UserInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final name = '${profile['fullName'] ?? ''}'.trim();
     final phone = '${profile['phone'] ?? ''}';
     final kyc = '${profile['kycStatus'] ?? ''}';
     final accId = '${profile['walletAccountId'] ?? ''}';
     final premium = profile['isPremium'] == true;
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.s16),
-      decoration: BoxDecoration(
-        color: c.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: c.border),
-      ),
-      child: Row(children: [
-        // أفاتار مربع الحواف + شارة التوثيق
-        Stack(clipBehavior: Clip.none, children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: (isVendor ? c.accent : c.primary).withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
+    return Column(children: [
+      // أفاتار دائري كبير
+      Stack(clipBehavior: Clip.none, children: [
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
+          ),
+          child: Center(
+            child: Text(
+              !loggedIn ? '؟' : _initials(name.isNotEmpty ? name : email),
+              style: AppText.headingL(Colors.white),
             ),
-            child: Center(
-              child: Text(
-                !loggedIn ? '؟' : _initials(name.isNotEmpty ? name : email),
-                style: AppText.headingM(
-                    isVendor ? c.accent : c.primary),
+          ),
+        ),
+        if (loggedIn && !isVendor)
+          Positioned(
+            left: -2,
+            bottom: -2,
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: kyc == 'APPROVED'
+                    ? const Color(0xFF4CAF50)
+                    : kyc == 'REJECTED'
+                        ? const Color(0xFFE53935)
+                        : const Color(0xFFFFA726),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: Icon(
+                kyc == 'APPROVED'
+                    ? Icons.check_rounded
+                    : kyc == 'REJECTED'
+                        ? Icons.close_rounded
+                        : Icons.hourglass_top_rounded,
+                size: 14,
+                color: Colors.white,
               ),
             ),
           ),
-          if (loggedIn && !isVendor)
-            Positioned(
-              left: -4,
-              bottom: -4,
-              child: Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: kyc == 'APPROVED'
-                      ? c.success
-                      : kyc == 'REJECTED'
-                          ? c.error
-                          : c.warning,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: c.surface, width: 2),
-                ),
-                child: Icon(
-                  kyc == 'APPROVED'
-                      ? Icons.check_rounded
-                      : kyc == 'REJECTED'
-                          ? Icons.close_rounded
-                          : Icons.hourglass_top_rounded,
-                  size: 13,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-        ]),
-        const SizedBox(width: AppSpacing.s12),
-        Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(
-            !loggedIn
-                ? 'زائر'
-                : name.isNotEmpty
-                    ? name
-                    : (email.isEmpty ? 'حسابي' : email),
-            style: AppText.headingS(c.textPrimary),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          if (loggedIn && !isVendor && accId.isNotEmpty)
-            InkWell(
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: accId));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('تم نسخ رقم الحساب'),
-                      duration: Duration(seconds: 1)),
-                );
-              },
-              borderRadius: BorderRadius.circular(6),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(formatAccount(accId),
-                    textDirection: TextDirection.ltr,
-                    style: AppText.en(c.textSecondary,
-                        size: 13, weight: FontWeight.w600)),
-                const SizedBox(width: 4),
-                Icon(Icons.copy_rounded, size: 14, color: c.textMuted),
-              ]),
-            )
-          else if (phone.isNotEmpty)
-            Text(phone,
-                textDirection: TextDirection.ltr,
-                style: AppText.caption(c.textSecondary)),
-          const SizedBox(height: 6),
-          if (loggedIn)
-            _AccountBadge(
-                isVendor: isVendor, premium: premium, kyc: kyc),
-        ])),
       ]),
-    );
+      const SizedBox(height: AppSpacing.s12),
+
+      // الاسم
+      Text(
+        !loggedIn
+            ? 'زائر'
+            : name.isNotEmpty
+                ? name
+                : (email.isEmpty ? 'حسابي' : email),
+        style: AppText.headingM(Colors.white),
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      const SizedBox(height: 6),
+
+      // رقم الحساب مع نسخ
+      if (loggedIn && !isVendor && accId.isNotEmpty)
+        InkWell(
+          onTap: () {
+            Clipboard.setData(ClipboardData(text: accId));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('تم نسخ رقم الحساب'), duration: Duration(seconds: 1)),
+            );
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text(
+                formatAccount(accId),
+                textDirection: TextDirection.ltr,
+                style: AppText.en(Colors.white.withOpacity(0.9), size: 13, weight: FontWeight.w600),
+              ),
+              const SizedBox(width: 6),
+              Icon(Icons.copy_rounded, size: 14, color: Colors.white.withOpacity(0.7)),
+            ]),
+          ),
+        )
+      else if (phone.isNotEmpty)
+        Text(phone, textDirection: TextDirection.ltr, style: AppText.caption(Colors.white.withOpacity(0.8))),
+
+      const SizedBox(height: 8),
+
+      // شارة نوع الحساب
+      if (loggedIn) _AccountBadge(isVendor: isVendor, premium: premium, kyc: kyc),
+    ]);
   }
 }
 
-/// شارة نوع الحساب: تجاري / مميز / عادي (+ حالة التوثيق نصاً للعادي).
 class _AccountBadge extends StatelessWidget {
-  const _AccountBadge(
-      {required this.isVendor, required this.premium, required this.kyc});
+  const _AccountBadge({required this.isVendor, required this.premium, required this.kyc});
   final bool isVendor;
   final bool premium;
   final String kyc;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final String label;
-    final Color color;
+    final Color bgColor;
     if (isVendor) {
       label = 'حساب تجاري';
-      color = c.accent;
+      bgColor = const Color(0xFFFFA726);
     } else if (premium) {
       label = 'حساب مميز';
-      color = c.warning;
+      bgColor = const Color(0xFFFFD54F);
     } else {
       label = 'حساب عادي';
-      color = c.primary;
+      bgColor = Colors.white.withOpacity(0.2);
     }
     return Wrap(
       spacing: 6,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withOpacity(0.35)),
+            color: bgColor,
+            borderRadius: BorderRadius.circular(20),
           ),
-          child: Text(label, style: AppText.caption(color)),
+          child: Text(
+            label,
+            style: AppText.caption(isVendor ? Colors.white : Colors.white.withOpacity(0.9)),
+          ),
         ),
         if (!isVendor)
           Text(
-            kyc == 'APPROVED'
-                ? 'موثق'
-                : kyc == 'REJECTED'
-                    ? 'التوثيق مرفوض'
-                    : 'قيد المراجعة',
-            style: AppText.caption(c.textMuted),
+            kyc == 'APPROVED' ? 'موثق' : kyc == 'REJECTED' ? 'التوثيق مرفوض' : 'قيد المراجعة',
+            style: AppText.caption(Colors.white.withOpacity(0.7)),
           ),
       ],
     );
   }
 }
 
-/// بطاقة خيارات واحدة بفواصل خفيفة — بلا تكرار.
-class _MenuCard extends StatelessWidget {
-  const _MenuCard({required this.isVendor, this.guest = false});
-  final bool isVendor;
-  final bool guest;
+// ─────────────────────── بطاقة عنصر قائمة مستقلة ───────────────────────
 
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final rows = <_MenuRow>[
-      if (!guest) ...[
-        _MenuRow(
-          icon: Icons.badge_outlined,
-          title: 'الملف الشخصي والتوثيق',
-          onTap: () => ProfileScreen._push(
-              context,
-              isVendor
-                  ? const RegisterScreen()
-                  : const ProfileDetailsScreen()),
-        ),
-        if (!isVendor)
-          _MenuRow(
-            icon: Icons.calendar_month_outlined,
-            title: 'حجوزاتي',
-            onTap: () =>
-                ProfileScreen._push(context, const MyBookingsScreen()),
-          ),
-        if (!isVendor)
-          _MenuRow(
-            icon: Icons.receipt_long_outlined,
-            title: 'سجل عمليات المحفظة',
-            onTap: () =>
-                ProfileScreen._push(context, const TransfersScreen()),
-          ),
-      ],
-      _MenuRow(
-        icon: Icons.favorite_border,
-        title: 'المفضلة',
-        onTap: () => ProfileScreen._push(context, const FavoritesScreen()),
-      ),
-      if (!guest)
-        _MenuRow(
-          icon: Icons.lock_outline_rounded,
-          title: 'الأمان وتغيير رمز الـ PIN',
-          onTap: () =>
-              ProfileScreen._push(context, const SecurityScreen()),
-        ),
-      if (isVendor)
-        _MenuRow(
-          icon: Icons.storefront_rounded,
-          title: 'متجري (حساب تجاري)',
-          onTap: () =>
-              ProfileScreen._push(context, const MyVendorScreen()),
-        ),
-    ];
-    return Container(
-      decoration: BoxDecoration(
-        color: c.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: c.border),
-      ),
-      child: Column(children: [
-        for (var i = 0; i < rows.length; i++) ...[
-          rows[i],
-          if (i < rows.length - 1)
-            Divider(height: 1, color: c.border, indent: 56),
-        ],
-      ]),
-    );
-  }
-}
-
-class _MenuRow extends StatelessWidget {
-  const _MenuRow(
-      {required this.icon, required this.title, required this.onTap});
+class _MenuTile extends StatelessWidget {
+  const _MenuTile({required this.icon, required this.title, required this.onTap});
   final IconData icon;
   final String title;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return ListTile(
-      leading: Icon(icon, color: c.primary),
-      title: Text(title, style: AppText.bodyL(c.textPrimary)),
-      trailing: Icon(Icons.chevron_left_rounded, color: c.textMuted),
-      onTap: onTap,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0AAEBF).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: const Color(0xFF0AAEBF), size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Text(title, style: AppText.bodyL(const Color(0xFF0A2E33)))),
+              const Icon(Icons.chevron_left_rounded, color: Color(0xFF8AA9AD), size: 22),
+            ]),
+          ),
+        ),
+      ),
     );
   }
 }
 
-/// تنبيه حالة التوثيق (قيد المراجعة / مرفوض مع السبب).
+// ─────────────────────── تنبيه التوثيق ───────────────────────
+
 class _KycBanner extends StatelessWidget {
   const _KycBanner({required this.profile});
   final Map<String, dynamic> profile;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final status = '${profile['kycStatus'] ?? ''}';
-    if (status == 'APPROVED' || status.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (status == 'APPROVED' || status.isEmpty) return const SizedBox.shrink();
     final rejected = status == 'REJECTED';
     final note = '${profile['kycNote'] ?? ''}';
     return Container(
       padding: const EdgeInsets.all(AppSpacing.s12),
       decoration: BoxDecoration(
-        color: (rejected ? c.error : c.warning).withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: (rejected ? c.error : c.warning).withOpacity(0.3)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: (rejected ? const Color(0xFFE53935) : const Color(0xFFFFA726)).withOpacity(0.3)),
       ),
       child: Row(children: [
         Icon(
           rejected ? Icons.error_outline_rounded : Icons.hourglass_top_rounded,
           size: 20,
-          color: rejected ? c.error : c.warning,
+          color: rejected ? const Color(0xFFE53935) : const Color(0xFFFFA726),
         ),
         const SizedBox(width: AppSpacing.s8),
         Expanded(
           child: Text(
             rejected
-                ? (note.isNotEmpty
-                    ? 'تم رفض التوثيق: $note'
-                    : 'تم رفض التوثيق — راجع الدعم')
+                ? (note.isNotEmpty ? 'تم رفض التوثيق: $note' : 'تم رفض التوثيق — راجع الدعم')
                 : 'حسابك قيد مراجعة التوثيق — المحفظة تتفعل بعد الموافقة',
-            style: AppText.bodyM(rejected ? c.error : c.textPrimary),
+            style: AppText.bodyM(rejected ? const Color(0xFFE53935) : const Color(0xFF0A2E33)),
           ),
         ),
       ]),
@@ -517,7 +502,128 @@ class _KycBanner extends StatelessWidget {
   }
 }
 
-/// تفاصيل الملف الشخصي والتوثيق — قراءة فقط (الرقم الوطني مقنّع).
+// ─────────────────────── أزرار مساعدة ───────────────────────
+
+class _GradientButton extends StatelessWidget {
+  const _GradientButton({required this.label, required this.icon, required this.onTap});
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Color(0xFF0AAEBF), Color(0xFF088E9C)]),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: const Color(0xFF0AAEBF).withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(icon, size: 20, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(label, style: AppText.button(Colors.white)),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OutlineButton extends StatelessWidget {
+  const _OutlineButton({required this.label, required this.icon, required this.onTap});
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.4)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(icon, size: 20, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(label, style: AppText.button(Colors.white)),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LogoutButton extends StatelessWidget {
+  const _LogoutButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE53935).withOpacity(0.3)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.logout_rounded, size: 20, color: Color(0xFFE53935)),
+              const SizedBox(width: 8),
+              Text('تسجيل الخروج', style: AppText.button(const Color(0xFFE53935))),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────── Providers ───────────────────────
+
+final _unreadProvider = FutureProvider.autoDispose<int>((ref) async {
+  if (ref.watch(sessionTokenProvider) == null) return 0;
+  try {
+    final d = await ref.watch(apiClientProvider).get('/notifications/unread-count');
+    if (d is num) return d.toInt();
+    if (d is Map) return ((d['unreadCount'] ?? d['count'] ?? 0) as num).toInt();
+    return 0;
+  } catch (_) {
+    return 0;
+  }
+});
+
+final _meProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  final d = await ref.watch(apiClientProvider).get('/users/me/profile');
+  if (d is Map) return Map<String, dynamic>.from(d);
+  return const {};
+});
+
+// ─────────────────────── شاشات فرعية ───────────────────────
+
+/// تفاصيل الملف الشخصي والتوثيق — قراءة فقط.
 class ProfileDetailsScreen extends ConsumerWidget {
   const ProfileDetailsScreen({super.key});
 
@@ -542,13 +648,12 @@ class ProfileDetailsScreen extends ConsumerWidget {
       ('البريد', email),
       ('المحافظة', '${p['governorate'] ?? ''}'),
       ('المدينة', '${p['city'] ?? ''}'),
-      ('رقم الحساب',
-          _UserInfoCard.formatAccount('${p['walletAccountId'] ?? ''}')),
+      ('رقم الحساب', _UserInfoCard.formatAccount('${p['walletAccountId'] ?? ''}')),
     ];
     final visible = rows.where((e) => e.$2.isNotEmpty).toList();
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(title: const Text('الملف الشخصي والتوثيق')),
+      appBar: AppBar(title: const Text('الملفي الشخصي والتوثيق')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.screenH),
         children: [
@@ -563,16 +668,8 @@ class ProfileDetailsScreen extends ConsumerWidget {
               Text('حالة التوثيق:', style: AppText.bodyM(c.textSecondary)),
               const SizedBox(width: 8),
               Text(
-                kyc == 'APPROVED'
-                    ? 'موثق'
-                    : kyc == 'REJECTED'
-                        ? 'مرفوض'
-                        : 'قيد المراجعة',
-                style: AppText.bodyL(kyc == 'APPROVED'
-                    ? c.success
-                    : kyc == 'REJECTED'
-                        ? c.error
-                        : c.warning),
+                kyc == 'APPROVED' ? 'موثق' : kyc == 'REJECTED' ? 'مرفوض' : 'قيد المراجعة',
+                style: AppText.bodyL(kyc == 'APPROVED' ? c.success : kyc == 'REJECTED' ? c.error : c.warning),
               ),
             ]),
           ),
@@ -586,17 +683,14 @@ class ProfileDetailsScreen extends ConsumerWidget {
             child: Column(children: [
               for (var i = 0; i < visible.length; i++) ...[
                 ListTile(
-                  title:
-                      Text(visible[i].$1, style: AppText.caption(c.textSecondary)),
-                  subtitle: Text(visible[i].$2,
-                      style: AppText.bodyL(c.textPrimary),
-                      textDirection:
-                          RegExp(r'^[0-9+]').hasMatch(visible[i].$2)
-                              ? TextDirection.ltr
-                              : null),
+                  title: Text(visible[i].$1, style: AppText.caption(c.textSecondary)),
+                  subtitle: Text(
+                    visible[i].$2,
+                    style: AppText.bodyL(c.textPrimary),
+                    textDirection: RegExp(r'^[0-9+]').hasMatch(visible[i].$2) ? TextDirection.ltr : null,
+                  ),
                 ),
-                if (i < visible.length - 1)
-                  Divider(height: 1, color: c.border, indent: 16),
+                if (i < visible.length - 1) Divider(height: 1, color: c.border, indent: 16),
               ],
             ]),
           ),
@@ -606,7 +700,7 @@ class ProfileDetailsScreen extends ConsumerWidget {
   }
 }
 
-/// الأمان — تغيير رمز حماية المحفظة (POST /customer-wallet/pin).
+/// الأمان — تغيير رمز حماية المحفظة.
 class SecurityScreen extends ConsumerStatefulWidget {
   const SecurityScreen({super.key});
 
@@ -643,8 +737,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       await ref.read(apiClientProvider).post('/customer-wallet/pin', body: {
-        if (_current.text.trim().isNotEmpty)
-          'currentPin': _current.text.trim(),
+        if (_current.text.trim().isNotEmpty) 'currentPin': _current.text.trim(),
         'newPin': pin,
       });
       if (!mounted) return;
@@ -653,9 +746,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
         const SnackBar(content: Text('تم تغيير رمز الحماية بنجاح')),
       );
     } on ApiException catch (e) {
-      setState(() => _error = e.message.contains('الحالي')
-          ? 'رمز الحماية الحالي غير صحيح'
-          : e.message);
+      setState(() => _error = e.message.contains('الحالي') ? 'رمز الحماية الحالي غير صحيح' : e.message);
     } catch (_) {
       setState(() => _error = 'تعذر الاتصال، أعد المحاولة');
     } finally {
@@ -671,115 +762,77 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
       appBar: AppBar(title: const Text('الأمان وتغيير رمز الـ PIN')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.screenH),
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('رمز الحماية يُستخدم لتأكيد عمليات المحفظة.',
-                  style: AppText.bodyM(c.textSecondary)),
-              const SizedBox(height: AppSpacing.s4),
-              Text('إن لم تكن قد عيّنت رمزاً من قبل، اترك حقل الحالي فارغاً.',
-                  style: AppText.caption(c.textMuted)),
-              const SizedBox(height: AppSpacing.s16),
-              TextField(
-                controller: _current,
-                keyboardType: TextInputType.number,
-                obscureText: _o1,
-                maxLength: 6,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  hintText: 'رمز الحماية الحالي (اختياري أول مرة)',
-                  counterText: '',
-                  suffixIcon: IconButton(
-                    icon: Icon(_o1
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined),
-                    onPressed: () => setState(() => _o1 = !_o1),
-                  ),
-                ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('رمز الحماية يُستخدم لتأكيد عمليات المحفظة.', style: AppText.bodyM(c.textSecondary)),
+          const SizedBox(height: AppSpacing.s4),
+          Text('إن لم تكن قد عيّنت رمزاً من قبل، اترك حقل الحالي فارغاً.', style: AppText.caption(c.textMuted)),
+          const SizedBox(height: AppSpacing.s16),
+          TextField(
+            controller: _current,
+            keyboardType: TextInputType.number,
+            obscureText: _o1,
+            maxLength: 6,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              hintText: 'رمز الحماية الحالي (اختياري أول مرة)',
+              counterText: '',
+              suffixIcon: IconButton(
+                icon: Icon(_o1 ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                onPressed: () => setState(() => _o1 = !_o1),
               ),
-              const SizedBox(height: AppSpacing.s12),
-              TextField(
-                controller: _pin,
-                keyboardType: TextInputType.number,
-                obscureText: _o2,
-                maxLength: 6,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  hintText: 'الرمز الجديد (4 أو 6 أرقام)',
-                  counterText: '',
-                  suffixIcon: IconButton(
-                    icon: Icon(_o2
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined),
-                    onPressed: () => setState(() => _o2 = !_o2),
-                  ),
-                ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s12),
+          TextField(
+            controller: _pin,
+            keyboardType: TextInputType.number,
+            obscureText: _o2,
+            maxLength: 6,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              hintText: 'الرمز الجديد (4 أو 6 أرقام)',
+              counterText: '',
+              suffixIcon: IconButton(
+                icon: Icon(_o2 ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                onPressed: () => setState(() => _o2 = !_o2),
               ),
-              const SizedBox(height: AppSpacing.s12),
-              TextField(
-                controller: _confirm,
-                keyboardType: TextInputType.number,
-                obscureText: _o3,
-                maxLength: 6,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  hintText: 'تأكيد الرمز الجديد',
-                  counterText: '',
-                  suffixIcon: IconButton(
-                    icon: Icon(_o3
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined),
-                    onPressed: () => setState(() => _o3 = !_o3),
-                  ),
-                ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s12),
+          TextField(
+            controller: _confirm,
+            keyboardType: TextInputType.number,
+            obscureText: _o3,
+            maxLength: 6,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              hintText: 'تأكيد الرمز الجديد',
+              counterText: '',
+              suffixIcon: IconButton(
+                icon: Icon(_o3 ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                onPressed: () => setState(() => _o3 = !_o3),
               ),
-              const SizedBox(height: AppSpacing.s20),
-              ElevatedButton(
-                onPressed: _loading ? null : _submit,
-                style:
-                    ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                child: _loading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Text('حفظ الرمز الجديد'),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: AppSpacing.s12),
-                Text(_error!,
-                    style: AppText.bodyM(c.error), textAlign: TextAlign.center),
-              ],
-            ]),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s20),
+          ElevatedButton(
+            onPressed: _loading ? null : _submit,
+            style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+            child: _loading
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Text('حفظ الرمز الجديد'),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: AppSpacing.s12),
+            Text(_error!, style: AppText.bodyM(c.error), textAlign: TextAlign.center),
+          ],
+        ]),
       ),
     );
   }
 }
 
-/// عدد الإشعارات غير المقروءة — للشارة.
-final _unreadProvider = FutureProvider.autoDispose<int>((ref) async {
-  if (ref.watch(sessionTokenProvider) == null) return 0;
-  try {
-    final d = await ref.watch(apiClientProvider).get('/notifications/unread-count');
-    if (d is num) return d.toInt();
-    if (d is Map) {
-      return ((d['unreadCount'] ?? d['count'] ?? 0) as num).toInt();
-    }
-    return 0;
-  } catch (_) {
-    return 0;
-  }
-});
-
-/// بيانات المستخدم الحالي — /users/me/profile.
-final _meProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  final d = await ref.watch(apiClientProvider).get('/users/me/profile');
-  if (d is Map) return Map<String, dynamic>.from(d);
-  return const {};
-});
-
-/// شاشة متجري — تحويل الحساب إلى تجاري + فتح متجر (مبسطة).
+/// شاشة متجري — تحويل الحساب إلى تجاري.
 class MyVendorScreen extends ConsumerWidget {
   const MyVendorScreen({super.key});
 
@@ -797,8 +850,11 @@ class MyVendorScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.s16),
             Text('لوحة البائع الكاملة', style: AppText.headingM(c.textPrimary)),
             const SizedBox(height: AppSpacing.s8),
-            Text('أدر متجرك وخدماتك وحجوزاتك من لوحة البائع على الويب، أو أضف متجرك إن لم يكن لديك بعد.',
-                style: AppText.bodyM(c.textSecondary), textAlign: TextAlign.center),
+            Text(
+              'أدر متجرك وخدماتك وحجوزاتك من لوحة البائع على الويب، أو أضف متجرك إن لم يكن لديك بعد.',
+              style: AppText.bodyM(c.textSecondary),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: AppSpacing.s24),
             ElevatedButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const _RegisterVendorScreen())),
@@ -812,7 +868,6 @@ class MyVendorScreen extends ConsumerWidget {
   }
 }
 
-/// نموذج تسجيل متجر جديد (لحساب VENDOR).
 class _RegisterVendorScreen extends ConsumerStatefulWidget {
   const _RegisterVendorScreen();
 
@@ -871,7 +926,9 @@ class _RegisterVendorScreenState extends ConsumerState<_RegisterVendorScreen> {
 
   @override
   void dispose() {
-    _name.dispose(); _desc.dispose(); _phone.dispose();
+    _name.dispose();
+    _desc.dispose();
+    _phone.dispose();
     super.dispose();
   }
 
@@ -884,10 +941,7 @@ class _RegisterVendorScreenState extends ConsumerState<_RegisterVendorScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.screenH),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          TextField(
-            controller: _name,
-            decoration: const InputDecoration(hintText: 'اسم المتجر *'),
-          ),
+          TextField(controller: _name, decoration: const InputDecoration(hintText: 'اسم المتجر *')),
           const SizedBox(height: AppSpacing.s12),
           DropdownButtonFormField<String>(
             value: _categoryId,
@@ -900,17 +954,9 @@ class _RegisterVendorScreenState extends ConsumerState<_RegisterVendorScreen> {
             decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
           ),
           const SizedBox(height: AppSpacing.s12),
-          TextField(
-            controller: _desc,
-            maxLines: 3,
-            decoration: const InputDecoration(hintText: 'وصف المتجر'),
-          ),
+          TextField(controller: _desc, maxLines: 3, decoration: const InputDecoration(hintText: 'وصف المتجر')),
           const SizedBox(height: AppSpacing.s12),
-          TextField(
-            controller: _phone,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(hintText: 'رقم الهاتف'),
-          ),
+          TextField(controller: _phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(hintText: 'رقم الهاتف')),
           const SizedBox(height: AppSpacing.s20),
           ElevatedButton(
             onPressed: _submitting ? null : _submit,
