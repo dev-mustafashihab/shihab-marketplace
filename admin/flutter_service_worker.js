@@ -3,7 +3,7 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"flutter_bootstrap.js": "95df7e14871df9cffa646761ad71fbe4",
+const RESOURCES = {"flutter_bootstrap.js": "5a5663b1a5912802b65de53e189327e5",
 "icons/Icon-maskable-512.png": "8226c3ef7099083c8660782637217c47",
 "icons/Icon-512.png": "567694095e42fa93392ab73d2c630037",
 "icons/Icon-maskable-192.png": "883187820f7eae1baa785bebb7456bea",
@@ -16,9 +16,9 @@ const RESOURCES = {"flutter_bootstrap.js": "95df7e14871df9cffa646761ad71fbe4",
 "assets/packages/lucide_icons/assets/lucide.ttf": "03f254a55085ec6fe9a7ae1861fda9fd",
 "assets/packages/cupertino_icons/assets/CupertinoIcons.ttf": "e986ebe42ef785b27164c36a9abc7818",
 "assets/AssetManifest.bin.json": "d1fc1e8f52fd6a52dbb0cb5d5fda266e",
-"assets/NOTICES": "1eb57013eb8953f1d2f262efdd19f8d0",
+"assets/NOTICES": "271404d8c3189b7bbdb0966d93bcda33",
 "assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8cb9b6ce",
-"assets/fonts/MaterialIcons-Regular.otf": "e0537a2d216dd995e4882a84591a4799",
+"assets/fonts/MaterialIcons-Regular.otf": "64bf2bcb4e364b3724f733fd8cc3854c",
 "assets/AssetManifest.json": "7bc5616526713e3599966ddb61e1bb1c",
 "assets/assets/svgs/shamcash/logo_icon.png": "799116d67e97eaf6aae788f8cb8ba76f",
 "assets/assets/svgs/shamcash/logo.png": "2f2f857bd4dd99e2a63153099b0a4342",
@@ -48,7 +48,7 @@ const RESOURCES = {"flutter_bootstrap.js": "95df7e14871df9cffa646761ad71fbe4",
 "assets/assets/images/dabirni.png": "9b05c127fcf3fda28823a1f27c80b29f",
 "assets/FontManifest.json": "1ee00d31df7d0b30bfafc1cf4922abf8",
 "assets/AssetManifest.bin": "ae4c9d612a47f1de5fd6e1ae06172518",
-"version.json": "8c9efef662b251414a2c8a2b4d3de184",
+"version.json": "675032298b3e52417298b2ff3986f003",
 "canvaskit/canvaskit.wasm": "1f237a213d7370cf95f443d896176460",
 "canvaskit/skwasm.wasm": "9f0c0c02b82a910d12ce0543ec130e60",
 "canvaskit/skwasm.js.symbols": "262f4827a1317abb59d71d6c587a93e2",
@@ -59,7 +59,7 @@ const RESOURCES = {"flutter_bootstrap.js": "95df7e14871df9cffa646761ad71fbe4",
 "canvaskit/canvaskit.js.symbols": "48c83a2ce573d9692e8d970e288d75f7",
 "canvaskit/skwasm.js": "694fda5704053957c2594de355805228",
 "canvaskit/skwasm.worker.js": "89990e8c92bcb123999aa81f7e203b1c",
-"main.dart.js": "573e36dc91c2a18ff595258f27ae6c40"};
+"main.dart.js": "ac74b8920c11eb2e9c76558bfddbaee6"};
 // The application shell files that are downloaded before a service worker can
 // start.
 const CORE = ["main.dart.js",

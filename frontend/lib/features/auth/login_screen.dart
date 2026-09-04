@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_client.dart';
 import 'register_screen.dart';
+import 'wallet_register_screen.dart';
 import '../../core/session/session_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -135,10 +136,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             Text('ما عندك حساب؟', style: AppText.bodyM(c.textSecondary)),
             TextButton(
-              onPressed: () => Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const RegisterScreen())),
-              child: Text('أنشئ حساباً', style: AppText.bodyM(c.primary)),
+              onPressed: () => Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const WalletRegisterScreen())),
+              child: Text('أنشئ محفظة', style: AppText.bodyM(c.primary)),
             ),
           ]),
+          TextButton(
+            onPressed: () => Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const RegisterScreen())),
+            child: Text('أو سجّل حساباً تجارياً', style: AppText.caption(c.textMuted)),
+          ),
         ]),
       ),
     );
