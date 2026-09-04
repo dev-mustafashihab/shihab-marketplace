@@ -1,0 +1,1 @@
+:  /opt/shihab-marketplace/admin-panel/web/index.html
