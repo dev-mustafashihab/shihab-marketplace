@@ -25,4 +25,17 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(10)
   locale?: string;
+
+  // إعادة تقديم صور الهوية بعد الرفض — تُعيد الحالة لقيد المراجعة
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  idFrontUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  idBackUrl?: string;
 }

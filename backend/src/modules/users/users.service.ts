@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -12,7 +12,11 @@ const USER_SELECT = {
   createdAt: true,
   lastLoginAt: true,
   profile: {
-    select: { firstName: true, lastName: true, phone: true, locale: true },
+    select: {
+      firstName: true, lastName: true, phone: true, locale: true,
+      fullName: true, nationalId: true, governorate: true, city: true,
+      kycStatus: true, kycNote: true, idFrontUrl: true, idBackUrl: true,
+    },
   },
 } satisfies Prisma.UserSelect;
 
@@ -31,12 +35,34 @@ export class UsersService {
     return user;
   }
 
+  /** مراجعة توثيق زبون (قبول/رفض مع سبب) — إدارة فقط. */
+  async reviewKyc(userId: string, status: 'APPROVED' | 'REJECTED', note?: string) {
+    await this.getProfile(userId);
+    if (status !== 'APPROVED' && status !== 'REJECTED') {
+      throw new BadRequestException('status must be APPROVED or REJECTED');
+    }
+    await this.prisma.profile.upsert({
+      where: { userId },
+      create: { userId, kycStatus: status, kycNote: note ?? null },
+      update: { kycStatus: status, kycNote: note ?? null },
+    });
+    return this.getProfile(userId);
+  }
+
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     await this.getProfile(userId);
+    const resubmit =
+      (dto.idFrontUrl || dto.idBackUrl) ? true : false;
     await this.prisma.profile.upsert({
       where: { userId },
       create: { userId, ...dto },
-      update: { ...dto },
+      update: {
+        ...dto,
+        // إعادة تقديم الهوية بعد الرفض تُعيد الملف لقيد المراجعة
+        ...(resubmit
+          ? { kycStatus: 'PENDING_DOCS' as const, kycNote: null }
+          : {}),
+      },
     });
     return this.getProfile(userId);
   }
@@ -58,6 +84,9 @@ export class UsersService {
           role: true,
           status: true,
           createdAt: true,
+          profile: {
+            select: { fullName: true, nationalId: true, kycStatus: true },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,

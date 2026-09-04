@@ -1,10 +1,21 @@
-import { Body, Controller, Get, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { IsOptional, IsString, IsIn, MaxLength } from 'class-validator';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ListUsersQueryDto } from './dto/list-users.query.dto';
+
+class ReviewKycDto {
+  @IsIn(['APPROVED', 'REJECTED'])
+  status!: 'APPROVED' | 'REJECTED';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  note?: string;
+}
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -26,5 +37,14 @@ export class UsersController {
   @Permissions('users:read')
   list(@Query() query: ListUsersQueryDto) {
     return this.usersService.list(query);
+  }
+
+  @Patch(':id/kyc')
+  @Permissions('users:read')
+  reviewKyc(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReviewKycDto,
+  ) {
+    return this.usersService.reviewKyc(id, dto.status, dto.note);
   }
 }

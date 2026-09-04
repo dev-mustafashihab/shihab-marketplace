@@ -121,6 +121,16 @@ export class CustomerWalletsService {
     if (booking.totalPrice <= 0) {
       throw new BadRequestException('Nothing to pay for this booking');
     }
+    // بوابة التوثيق: الدفع من الرصيد للمستخدمين الموثقين فقط
+    if (user.role !== 'ADMIN') {
+      const prof = await this.prisma.profile.findUnique({
+        where: { userId: booking.customerId },
+        select: { kycStatus: true },
+      });
+      if (!prof || prof.kycStatus !== 'APPROVED') {
+        throw new ForbiddenException('KYC_NOT_APPROVED');
+      }
+    }
     return this.prisma.$transaction(async (tx: Tx) => {
       // قفل صف المحفظة ضد الدفع المزدوج المتزامن
       let wallet = await tx.customerWallet.findUnique({

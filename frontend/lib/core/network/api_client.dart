@@ -61,6 +61,27 @@ class ApiClient {
         headers: _headers(), body: jsonEncode(body ?? {})), path: path);
   }
 
+  /// رفع صورة (multipart) — يُستخدم لصور الهوية. يرجع حقل url من الخادم.
+  Future<String> uploadImage(String path, String filePath, {String field = 'file'}) async {
+    final req = http.MultipartRequest('POST', Uri.parse('$baseUrl$path'));
+    if (_currentToken != null) req.headers['Authorization'] = 'Bearer $_currentToken';
+    req.files.add(await http.MultipartFile.fromPath(field, filePath));
+    final streamed = await req.send().timeout(const Duration(seconds: 30));
+    final res = await http.Response.fromStream(streamed);
+    if (res.body.isEmpty) throw ApiException('لا يوجد اتصال بالخادم', status: res.statusCode);
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode >= 400 || json['success'] == false) {
+      final data = json['data'];
+      final url = (data is Map && data['url'] is String) ? data['url'] as String : null;
+      if (url != null && res.statusCode < 400) return url;
+      throw ApiException((json['message'] as String?) ?? 'تعذر رفع الصورة',
+          code: json['code'] as String?, status: res.statusCode);
+    }
+    final data = json['data'] ?? json;
+    if (data is Map && data['url'] is String) return data['url'] as String;
+    throw ApiException('استجابة رفع غير متوقعة', status: res.statusCode);
+  }
+
   Map<String, String> _headers() => {
         'Content-Type': 'application/json',
         if (_currentToken != null) 'Authorization': 'Bearer $_currentToken',
