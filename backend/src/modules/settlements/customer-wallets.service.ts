@@ -26,6 +26,28 @@ export class CustomerWalletsService {
     private readonly settings: SettingsService,
   ) {}
 
+  /** تغيير رمز حماية المحفظة — يتحقق من الحالي (إن وُجد) ويخزن بصمة فقط. */
+  async changePin(userId: string, currentPin: string | undefined, newPin: string) {
+    if (!/^\d{4}$|^\d{6}$/.test(newPin ?? '')) {
+      throw new BadRequestException('رمز الحماية الجديد يجب أن يكون 4 أو 6 أرقام');
+    }
+    const bcrypt = await import('bcryptjs');
+    const profile = await this.prisma.profile.findUnique({
+      where: { userId },
+      select: { walletPinHash: true },
+    });
+    if (!profile) throw new NotFoundException('Profile not found');
+    if (profile.walletPinHash) {
+      const ok = await bcrypt.compare(currentPin ?? '', profile.walletPinHash);
+      if (!ok) throw new ForbiddenException('رمز الحماية الحالي غير صحيح');
+    }
+    await this.prisma.profile.update({
+      where: { userId },
+      data: { walletPinHash: await bcrypt.hash(newPin, 10) },
+    });
+    return { success: true };
+  }
+
   /** رصيدي + آخر الحركات — المحفظة تُنشأ عند أول استخدام برصيد 0. */
   async getMine(userId: string, page = 1, limit = 20) {
     const wallet = await this.prisma.customerWallet.upsert({

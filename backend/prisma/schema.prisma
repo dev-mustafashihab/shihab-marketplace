@@ -85,6 +85,7 @@ model Profile {
   // حساب المحفظة: 16 رقماً فريداً + بصمة PIN (لا يُخزن PIN صريحاً أبداً)
   walletAccountId String? @unique @map("wallet_account_id") @db.VarChar(16)
   walletPinHash   String? @map("wallet_pin_hash") @db.VarChar(255)
+  isPremium       Boolean  @default(false) @map("is_premium")
   nationalId   String?   @unique @map("national_id") @db.VarChar(11)
   birthDate    DateTime? @map("birth_date") @db.Date
   governorate  String?   @db.VarChar(50)

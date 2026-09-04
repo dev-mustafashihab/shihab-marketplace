@@ -17,7 +17,7 @@ const USER_SELECT = {
       fullName: true, nationalId: true, governorate: true, city: true,
       kycStatus: true, kycNote: true, idFrontUrl: true, idBackUrl: true,
       fatherName: true, motherName: true, birthDate: true,
-      walletAccountId: true,
+      walletAccountId: true, isPremium: true,
     },
   },
 } satisfies Prisma.UserSelect;

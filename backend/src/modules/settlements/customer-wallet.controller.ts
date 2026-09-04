@@ -5,8 +5,10 @@ import {
   IsInt,
   IsOptional,
   IsPositive,
+  IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 import { CustomerWalletsService } from './customer-wallets.service';
@@ -45,6 +47,17 @@ class PayBookingDto {
   bookingId!: string;
 }
 
+class ChangePinDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(6)
+  currentPin?: string;
+
+  @IsString()
+  @MaxLength(6)
+  newPin!: string;
+}
+
 @ApiTags('customer-wallet')
 @ApiBearerAuth()
 @Controller('customer-wallet')
@@ -70,5 +83,13 @@ export class CustomerWalletController {
     @Body() dto: PayBookingDto,
   ) {
     return this.wallets.payBooking(user, dto.bookingId);
+  }
+
+  @Post('pin')
+  changePin(
+    @CurrentUser() user: { id: string; role: string },
+    @Body() dto: ChangePinDto,
+  ) {
+    return this.wallets.changePin(user.id, dto.currentPin, dto.newPin);
   }
 }
