@@ -42,19 +42,31 @@ class _AccountInfoScreenState extends ConsumerState<AccountInfoScreen>
       appBar: AppBar(
         title: const Text('معلومات الحساب'),
         actions: [
-          // زر تعديل أعلى يسار
-          IconButton(
-            icon: Icon(_editing ? Icons.check_rounded : Icons.edit_outlined),
-            tooltip: _editing ? 'حفظ' : 'تعديل',
-            onPressed: () {
-              setState(() => _editing = !_editing);
-              if (!_editing) {
-                // حفظ التعديلات
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم حفظ التعديلات')),
-                );
-              }
-            },
+          // زر تعديل / حفظ
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: _editing
+                ? TextButton.icon(
+                    onPressed: () {
+                      setState(() => _editing = false);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('تم حفظ التعديلات')),
+                      );
+                    },
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('حفظ'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: const Color(0xFF0AAEBF),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    ),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'تعديل',
+                    onPressed: () => setState(() => _editing = true),
+                  ),
           ),
         ],
         bottom: TabBar(
@@ -62,6 +74,9 @@ class _AccountInfoScreenState extends ConsumerState<AccountInfoScreen>
           labelColor: c.primary,
           unselectedLabelColor: c.textMuted,
           indicatorColor: c.primary,
+          indicatorWeight: 3,
+          labelStyle: AppText.bodyM(c.textPrimary).copyWith(fontWeight: FontWeight.w600),
+          unselectedLabelStyle: AppText.bodyM(c.textMuted),
           tabs: const [
             Tab(text: 'الحساب'),
             Tab(text: 'الشخصية'),
@@ -98,47 +113,34 @@ class _AccountTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fields = [
-      _FieldData('رقم الحساب', _formatAccount('${profile['walletAccountId'] ?? ''}'), Icons.account_balance_wallet_outlined),
-      _FieldData('البريد الالكتروني', email, Icons.email_outlined),
-      _FieldData('رقم الهاتف', '${profile['phone'] ?? ''}', Icons.phone_outlined),
-      _FieldData('نوع الحساب', _accountType(profile), Icons.badge_outlined),
-      _FieldData('حالة التوثيق', _kycStatus(profile), Icons.verified_outlined),
-    ];
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.screenH),
       child: Column(children: [
         _InfoCard(
-          title: 'معلومات الحساب',
-          children: fields.map((f) => _InfoRow(
-            icon: f.icon,
-            label: f.label,
-            value: f.value,
-            editable: false, // الحساب لا يُعدّل
-          )).toList(),
+          children: [
+            _InfoRow(
+              icon: Icons.alternate_email_rounded,
+              label: 'البريد الالكتروني',
+              value: email,
+              editable: editing,
+            ),
+            _InfoRow(
+              icon: Icons.phone_outlined,
+              label: 'رقم الهاتف',
+              value: '${profile['phone'] ?? ''}',
+              editable: editing,
+            ),
+            _InfoRow(
+              icon: Icons.edit_note_rounded,
+              label: 'البايو',
+              value: '${profile['bio'] ?? ''}',
+              editable: editing,
+              maxLines: 3,
+            ),
+          ],
         ),
       ]),
     );
-  }
-
-  static String _formatAccount(String raw) {
-    final d = raw.replaceAll(RegExp(r'[\s\-]'), '');
-    if (d.length != 16) return raw;
-    return '${d.substring(0, 4)} ${d.substring(4, 8)} ${d.substring(8, 12)} ${d.substring(12)}';
-  }
-
-  String _accountType(Map<String, dynamic> p) {
-    if (p['role'] == 'VENDOR') return 'حساب تجاري';
-    if (p['isPremium'] == true) return 'حساب مميز';
-    return 'حساب عادي';
-  }
-
-  String _kycStatus(Map<String, dynamic> p) {
-    final s = '${p['kycStatus'] ?? ''}';
-    if (s == 'APPROVED') return 'موثق';
-    if (s == 'REJECTED') return 'مرفوض';
-    return 'قيد المراجعة';
   }
 }
 
@@ -153,12 +155,12 @@ class _PersonalTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final fields = [
       _FieldData('الاسم الكامل', '${profile['fullName'] ?? ''}', Icons.person_outline_rounded),
-      _FieldData('اسم الأب', '${profile['fatherName'] ?? ''}', Icons.family_restroom_outlined),
-      _FieldData('اسم الأم', '${profile['motherName'] ?? ''}', Icons.family_restroom_outlined),
-      _FieldData('الرقم الوطني', _mask('${profile['nationalId'] ?? ''}', 11), Icons.badge_outlined),
+      _FieldData('اسم الأب', '${profile['fatherName'] ?? ''}', Icons.emoji_people_outlined),
+      _FieldData('اسم الأم', '${profile['motherName'] ?? ''}', Icons.emoji_people_outlined),
+      _FieldData('الرقم الوطني', _mask('${profile['nationalId'] ?? ''}', 11), Icons.fingerprint),
       _FieldData('تاريخ الميلاد', _formatDate('${profile['birthDate'] ?? ''}'), Icons.cake_outlined),
       _FieldData('المحافظة', '${profile['governorate'] ?? ''}', Icons.location_city_outlined),
-      _FieldData('المدينة', '${profile['city'] ?? ''}', Icons.location_on_outlined),
+      _FieldData('المدينة', '${profile['city'] ?? ''}', Icons.place_outlined),
       _FieldData('العنوان', '${profile['address'] ?? ''}', Icons.home_outlined),
     ];
 
@@ -166,8 +168,6 @@ class _PersonalTab extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.screenH),
       child: Column(children: [
         _InfoCard(
-          title: 'البيانات الشخصية',
-          editable: editing,
           children: fields.map((f) => _InfoRow(
             icon: f.icon,
             label: f.label,
@@ -216,8 +216,6 @@ class _GuardianTab extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.screenH),
       child: Column(children: [
         _InfoCard(
-          title: 'بيانات الوصي',
-          editable: editing,
           children: fields.map((f) => _InfoRow(
             icon: f.icon,
             label: f.label,
@@ -227,10 +225,22 @@ class _GuardianTab extends StatelessWidget {
         ),
         if (editing) ...[
           const SizedBox(height: AppSpacing.s16),
-          Text(
-            'ملاحظة: بيانات الوصي مطلوبة للحسابات تحت سن 18.',
-            style: AppText.caption(c.textMuted),
-            textAlign: TextAlign.center,
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFA726).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(children: [
+              const Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFFFFA726)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'بيانات الوصي مطلوبة للحسابات تحت سن 18.',
+                  style: AppText.caption(const Color(0xFFFFA726)),
+                ),
+              ),
+            ]),
           ),
         ],
       ]),
@@ -248,10 +258,8 @@ class _FieldData {
 }
 
 class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.title, required this.children, this.editable = false});
-  final String title;
+  const _InfoCard({required this.children});
   final List<Widget> children;
-  final bool editable;
 
   @override
   Widget build(BuildContext context) {
@@ -265,7 +273,13 @@ class _InfoCard extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: Column(children: children),
+        child: Column(children: [
+          for (var i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i < children.length - 1)
+              Divider(height: 1, color: const Color(0xFFD6EAF0), indent: 52),
+          ],
+        ]),
       ),
     );
   }
@@ -277,39 +291,49 @@ class _InfoRow extends StatelessWidget {
     required this.label,
     required this.value,
     required this.editable,
+    this.maxLines = 1,
   });
 
   final IconData icon;
   final String label;
   final String value;
   final bool editable;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(children: [
-        Icon(icon, size: 20, color: const Color(0xFF0AAEBF)),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: const Color(0xFF0AAEBF).withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: const Color(0xFF0AAEBF)),
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label, style: AppText.caption(c.textMuted)),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               editable
-                  ? _EditableField(value: value)
+                  ? _EditableField(value: value, maxLines: maxLines)
                   : Text(
                       value.isNotEmpty ? value : '—',
                       style: AppText.bodyL(c.textPrimary),
                       textDirection: _isLtr(value) ? TextDirection.ltr : null,
+                      maxLines: maxLines,
+                      overflow: TextOverflow.ellipsis,
                     ),
             ],
           ),
         ),
-        if (!editable && value.isNotEmpty)
-          Icon(Icons.chevron_left_rounded, size: 20, color: c.textMuted),
       ]),
     );
   }
@@ -318,22 +342,28 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _EditableField extends StatelessWidget {
-  const _EditableField({required this.value});
+  const _EditableField({required this.value, this.maxLines = 1});
   final String value;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       initialValue: value,
+      maxLines: maxLines,
       style: AppText.bodyL(const Color(0xFF0A2E33)),
       decoration: InputDecoration(
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 4),
-        border: UnderlineInputBorder(
-          borderSide: BorderSide(color: const Color(0xFF0AAEBF).withOpacity(0.3)),
+        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        filled: true,
+        fillColor: const Color(0xFFF2FBFC),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
         ),
-        focusedBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: Color(0xFF0AAEBF), width: 2),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF0AAEBF), width: 1.5),
         ),
       ),
     );
