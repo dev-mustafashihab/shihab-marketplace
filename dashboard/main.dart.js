@@ -37370,7 +37370,7 @@ return p},
 pb(a,b){return this.ahP(a,b)},
 ahP(a,b){var s=0,r=A.M(t.a),q,p=this,o,n,m,l,k,j,i
 var $async$pb=A.N(function(c,d){if(c===1)return A.J(d,r)
-while(true)switch(s){case 0:m=A.d8("http://127.0.0.1:5400/api/v1/auth/login",0,null)
+while(true)switch(s){case 0:m=A.d8("/mp-api/api/v1/auth/login",0,null)
 l=t.N
 k=A.at(["Content-Type","application/json"],l,l)
 s=3
@@ -37415,7 +37415,7 @@ cP(a){return this.Ur(a)},
 Ur(a){var s=0,r=A.M(t.z),q,p=this,o
 var $async$cP=A.N(function(b,c){if(b===1)return A.J(c,r)
 while(true)switch(s){case 0:s=3
-return A.O(A.aKO(A.d8("http://127.0.0.1:5400/api/v1"+a,0,null),p.gBX()),$async$cP)
+return A.O(A.aKO(A.d8("/mp-api/api/v1"+a,0,null),p.gBX()),$async$cP)
 case 3:o=c
 if(o.b===401){p.kF()
 throw A.e(A.cU("\u0627\u0646\u062a\u0647\u062a \u0627\u0644\u062c\u0644\u0633\u0629"))}q=B.aT.rH(A.alS(A.al_(o.e)).e7(o.w),null)
@@ -37426,7 +37426,7 @@ return A.L($async$cP,r)},
 po(a,b){return this.aj9(a,b)},
 aj9(a,b){var s=0,r=A.M(t.z),q,p=this,o,n,m
 var $async$po=A.N(function(c,d){if(c===1)return A.J(d,r)
-while(true)switch(s){case 0:o=A.d8("http://127.0.0.1:5400/api/v1"+a,0,null)
+while(true)switch(s){case 0:o=A.d8("/mp-api/api/v1"+a,0,null)
 n=p.gBX()
 s=3
 return A.O(A.aLq(o,B.aT.xF(b,null),n),$async$po)
@@ -37440,7 +37440,7 @@ return A.L($async$po,r)},
 yX(a,b){return this.ajj(a,b)},
 ajj(a,b){var s=0,r=A.M(t.z),q,p=this,o,n,m
 var $async$yX=A.N(function(c,d){if(c===1)return A.J(d,r)
-while(true)switch(s){case 0:o=A.d8("http://127.0.0.1:5400/api/v1"+a,0,null)
+while(true)switch(s){case 0:o=A.d8("/mp-api/api/v1"+a,0,null)
 n=p.gBX()
 s=3
 return A.O(A.awZ(o,B.aT.xF(b,null),n),$async$yX)

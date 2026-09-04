@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _baseUrl = 'http://127.0.0.1:5400/api/v1';
+const _baseUrl = '/mp-api/api/v1';
 
 final adminTokenProvider = StateProvider<String?>((ref) => null);
 
