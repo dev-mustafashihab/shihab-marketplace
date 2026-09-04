@@ -150,10 +150,10 @@ class _BookingCategoriesSection extends ConsumerWidget {
   const _BookingCategoriesSection();
 
   static const _cats = [
-    (slug: 'venues', label: 'قاعات ومناسبات', icon: HugeIcons.strokeRoundedBuilding02),
-    (slug: 'pools', label: 'مسابح وشاليهات', icon: HugeIcons.strokeRoundedDroplet),
-    (slug: 'salons', label: 'صالونات وتجميل', icon: HugeIcons.strokeRoundedChairBarber),
-    (slug: 'gifts', label: 'هدايا وورد', icon: HugeIcons.strokeRoundedGift),
+    (slug: 'venues', label: 'قاعات', icon: HugeIcons.strokeRoundedBuilding02),
+    (slug: 'pools', label: 'مسابح', icon: HugeIcons.strokeRoundedDroplet),
+    (slug: 'salons', label: 'صالونات', icon: HugeIcons.strokeRoundedChairBarber),
+    (slug: 'gifts', label: 'هدايا', icon: HugeIcons.strokeRoundedGift),
   ];
 
   @override
@@ -173,10 +173,10 @@ class _BookingCategoriesSection extends ConsumerWidget {
         Text('احجز حسب القسم', style: AppText.headingM(c.textPrimary)),
         const SizedBox(height: AppSpacing.s8),
         GridView.count(
-          crossAxisCount: 2,
+          crossAxisCount: 4,
           crossAxisSpacing: AppSpacing.s8,
           mainAxisSpacing: AppSpacing.s8,
-          childAspectRatio: 2.6,
+          childAspectRatio: 0.8,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           padding: EdgeInsets.zero,
@@ -186,7 +186,7 @@ class _BookingCategoriesSection extends ConsumerWidget {
                 final id = idFor(cat.slug);
                 final sel = id != null && id == selectedId;
                 return Material(
-                  color: sel ? c.primary.withOpacity(0.10) : c.surface,
+                  color: sel ? c.primary.withOpacity(0.12) : c.surface,
                   borderRadius: BorderRadius.circular(AppRadius.m),
                   child: InkWell(
                     onTap: id == null
@@ -194,27 +194,31 @@ class _BookingCategoriesSection extends ConsumerWidget {
                         : () => ref.read(homeCategoryProvider.notifier).state = sel ? null : id,
                     borderRadius: BorderRadius.circular(AppRadius.m),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(AppRadius.m),
-                        border: Border.all(color: sel ? c.primary : c.border),
+                        border: Border.all(color: sel ? c.primary : c.border, width: sel ? 1.5 : 1),
                       ),
-                      child: Row(children: [
+                      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                         Container(
-                          width: 36, height: 36,
+                          width: 40, height: 40,
                           decoration: BoxDecoration(
                             color: c.primary.withOpacity(sel ? 0.16 : 0.08),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Center(child: HugeIcon(icon: cat.icon, color: c.primary, size: 19)),
+                          child: Center(child: HugeIcon(icon: cat.icon, color: sel ? c.primary : c.textSecondary, size: 20)),
                         ),
-                        const SizedBox(width: AppSpacing.s8),
-                        Expanded(
+                        const SizedBox(height: 6),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
                           child: Text(cat.label,
-                              style: AppText.bodyM(c.textPrimary).copyWith(fontWeight: FontWeight.w600),
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                                color: sel ? c.primary : c.textPrimary,
+                              ),
+                              maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
                         ),
-                        if (sel) Icon(Icons.check_circle_rounded, size: 18, color: c.primary),
                       ]),
                     ),
                   ),
