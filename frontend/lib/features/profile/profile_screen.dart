@@ -16,8 +16,7 @@ import '../notifications/notifications_screen.dart';
 import '../transfers/transfers_screen.dart';
 import 'account_info_screen.dart';
 
-/// حسابي — شاشة موحدة (RTL كامل) مع ترويسة متدرجة، 4 بطاقات مجمّعة،
-/// وسجل تمرير ثابت (ScrollController + AutomaticKeepAliveClientMixin).
+/// حسابي — تصميم نظيف (خلفية بيضاء/رمادي فاتح)، صناديق مستقلة، RTL كامل.
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -51,23 +50,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     final profile = (me['profile'] as Map?)?.cast<String, dynamic>() ?? const {};
     final isVendor = role == 'VENDOR';
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              c.primary.withOpacity(0.95),
-              c.primary.withOpacity(0.7),
-              c.background,
-            ],
-            stops: const [0.0, 0.35, 0.55],
-          ),
-        ),
-        child: Column(children: [
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F6FA),
+        body: Column(children: [
           // ── ترويسة ثابتة ──
-          _ProfileHeader(loggedIn: loggedIn),
+          _Header(loggedIn: loggedIn),
 
           // ── محتوى قابل للتمرير ──
           Expanded(
@@ -77,7 +66,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: AppSpacing.s16),
+                  const SizedBox(height: 16),
 
                   // ── بطاقة المستخدم ──
                   _UserCard(
@@ -88,161 +77,127 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   ),
 
                   // ── تنبيه التوثيق ──
-                  if (loggedIn && !isVendor) ...[
-                    const SizedBox(height: AppSpacing.s12),
+                  if (loggedIn && !isVendor && '${profile['kycStatus'] ?? ''}' == 'PENDING') ...[
+                    const SizedBox(height: 12),
                     _KycBanner(profile: profile),
                   ],
 
                   // ── أزرار الزائر ──
                   if (!loggedIn) ...[
-                    const SizedBox(height: AppSpacing.s16),
+                    const SizedBox(height: 16),
                     _PrimaryButton(
                       label: 'تسجيل الدخول',
                       icon: Icons.login_rounded,
                       onTap: () => _push(const LoginScreen()),
                     ),
-                    const SizedBox(height: AppSpacing.s12),
-                    _GhostButton(
+                    const SizedBox(height: 12),
+                    _SecondaryButton(
                       label: 'أنشئ محفظة جديدة',
                       icon: Icons.account_balance_wallet_outlined,
                       onTap: () => _push(const WalletRegisterScreen()),
                     ),
-                    const SizedBox(height: AppSpacing.s20),
-                    _GroupedCard(title: 'العام', children: [
-                      _MenuTile(
-                        icon: Icons.favorite_border,
-                        title: 'المفضلة',
-                        onTap: () => _push(const FavoritesScreen()),
-                      ),
-                    ]),
                   ],
 
-                  // ── البطاقات الأربع المجمّعة ──
+                  // ── صناديق مستقلة ──
                   if (loggedIn) ...[
-                    const SizedBox(height: AppSpacing.s20),
+                    const SizedBox(height: 20),
 
-                    // ① الحساب والتوثيق
-                    _GroupedCard(title: 'الحساب والتوثيق', children: [
-                      _MenuTile(
-                        icon: Icons.person_outline_rounded,
-                        title: 'الملف الشخصي',
-                        onTap: () => _push(
-                          isVendor ? const RegisterScreen() : const AccountInfoScreen(),
-                        ),
+                    _StandaloneCard(
+                      icon: Icons.person_outline_rounded,
+                      title: 'الملف الشخصي',
+                      onTap: () => _push(
+                        isVendor ? const RegisterScreen() : const AccountInfoScreen(),
                       ),
-                      _MenuTile(
-                        icon: Icons.verified_outlined,
-                        title: 'توثيق الحساب',
-                        badge: _kycBadge(profile),
-                        onTap: () => _push(const AccountInfoScreen()),
-                      ),
-                      if (!isVendor)
-                        _MenuTile(
-                          icon: Icons.account_balance_wallet_outlined,
-                          title: 'تفاصيل المحفظة',
-                          onTap: () => _push(const TransfersScreen()),
-                        ),
-                    ]),
-
-                    const SizedBox(height: AppSpacing.s16),
-
-                    // ② النشاط والمعاملات
-                    _GroupedCard(title: 'النشاط والمعاملات', children: [
-                      if (!isVendor) ...[
-                        _MenuTile(
-                          icon: Icons.calendar_month_outlined,
-                          title: 'حجوزاتي',
-                          onTap: () => _push(const MyBookingsScreen()),
-                        ),
-                        _MenuTile(
-                          icon: Icons.receipt_long_outlined,
-                          title: 'سجل عمليات المحفظة',
-                          onTap: () => _push(const TransfersScreen()),
-                        ),
-                      ],
-                      _MenuTile(
-                        icon: Icons.favorite_border,
-                        title: 'المفضلة',
-                        onTap: () => _push(const FavoritesScreen()),
-                      ),
-                    ]),
-
-                    const SizedBox(height: AppSpacing.s16),
-
-                    // ③ الأمان والوصول
-                    _GroupedCard(title: 'الأمان والوصول', children: [
-                      _MenuTile(
-                        icon: Icons.lock_outline_rounded,
-                        title: 'رمز الدخول (PIN)',
-                        onTap: () => _push(const SecurityScreen()),
-                      ),
-                      _MenuTile(
-                        icon: Icons.security_outlined,
-                        title: 'الأمان والتحقق',
-                        onTap: () => _push(const SecurityScreen()),
-                      ),
-                      _MenuTile(
-                        icon: Icons.devices_outlined,
-                        title: 'إدارة الأجهزة المرتبطة',
-                        onTap: () {},
-                      ),
-                    ]),
-
-                    const SizedBox(height: AppSpacing.s16),
-
-                    // ④ تفضيلات التطبيق والدعم
-                    _GroupedCard(title: 'التفضيلات والدعم', children: [
-                      _MenuTile(
-                        icon: Icons.dark_mode_outlined,
-                        title: 'المظهر',
-                        trailing: 'فاتح',
-                        onTap: () {},
-                      ),
-                      _MenuTile(
-                        icon: Icons.language_outlined,
-                        title: 'اللغة',
-                        trailing: 'العربية',
-                        onTap: () {},
-                      ),
-                      _MenuTile(
-                        icon: Icons.notifications_none_rounded,
-                        title: 'الإشعارات',
-                        onTap: () => _push(const NotificationsScreen()),
-                      ),
-                      _MenuTile(
-                        icon: Icons.help_outline_rounded,
-                        title: 'المساعدة والدعم الفني',
-                        onTap: () {},
-                      ),
-                      _MenuTile(
-                        icon: Icons.description_outlined,
-                        title: 'الشروط وسياسة الخصوصية',
-                        onTap: () {},
-                      ),
-                      _MenuTile(
-                        icon: Icons.info_outline_rounded,
-                        title: 'حول التطبيق',
-                        trailing: 'v1.0.0',
-                        onTap: () {},
-                      ),
-                    ]),
-
-                    const SizedBox(height: AppSpacing.s32),
-
-                    // ── إجراءات تدميرية ──
-                    _DangerButton(
-                      label: 'تسجيل الخروج',
-                      icon: Icons.logout_rounded,
-                      onTap: () => _confirmLogout(context, ref),
                     ),
-                    const SizedBox(height: AppSpacing.s12),
-                    _DangerLink(
-                      label: 'حذف الحساب',
-                      onTap: () => _confirmDelete(context),
+                    const SizedBox(height: 10),
+                    _StandaloneCard(
+                      icon: Icons.verified_outlined,
+                      title: 'توثيق الحساب',
+                      badge: _kycBadge(profile),
+                      onTap: () => _push(const AccountInfoScreen()),
                     ),
+                    if (!isVendor) ...[
+                      const SizedBox(height: 10),
+                      _StandaloneCard(
+                        icon: Icons.calendar_month_outlined,
+                        title: 'حجوزاتي',
+                        onTap: () => _push(const MyBookingsScreen()),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    _StandaloneCard(
+                      icon: Icons.favorite_border,
+                      title: 'المفضلة',
+                      onTap: () => _push(const FavoritesScreen()),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    _StandaloneCard(
+                      icon: Icons.lock_outline_rounded,
+                      title: 'رمز الدخول (PIN)',
+                      onTap: () => _push(const SecurityScreen()),
+                    ),
+                    const SizedBox(height: 10),
+                    _StandaloneCard(
+                      icon: Icons.security_outlined,
+                      title: 'الأمان والتحقق',
+                      onTap: () => _push(const SecurityScreen()),
+                    ),
+                    const SizedBox(height: 10),
+                    _StandaloneCard(
+                      icon: Icons.devices_outlined,
+                      title: 'إدارة الأجهزة',
+                      onTap: () {},
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    _StandaloneCard(
+                      icon: Icons.dark_mode_outlined,
+                      title: 'المظهر',
+                      trailing: 'فاتح',
+                      onTap: () {},
+                    ),
+                    const SizedBox(height: 10),
+                    _StandaloneCard(
+                      icon: Icons.language_outlined,
+                      title: 'اللغة',
+                      trailing: 'العربية',
+                      onTap: () {},
+                    ),
+                    const SizedBox(height: 10),
+                    _StandaloneCard(
+                      icon: Icons.help_outline_rounded,
+                      title: 'الدعم والمساعدة',
+                      onTap: () {},
+                    ),
+                    const SizedBox(height: 10),
+                    _StandaloneCard(
+                      icon: Icons.description_outlined,
+                      title: 'الشروط والخصوصية',
+                      onTap: () {},
+                    ),
+                    const SizedBox(height: 10),
+                    _StandaloneCard(
+                      icon: Icons.info_outline_rounded,
+                      title: 'حول التطبيق',
+                      trailing: 'v1.0.0',
+                      onTap: () {},
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // ── تسجيل الخروج ──
+                    _LogoutCard(onTap: () => _confirmLogout(context, ref)),
+
+                    const SizedBox(height: 10),
+
+                    // ── حذف الحساب ──
+                    _DeleteAccountCard(onTap: () => _confirmDelete(context)),
                   ],
 
-                  const SizedBox(height: AppSpacing.s24),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -251,8 +206,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       ),
     );
   }
-
-  // ── مساعدات التنقل ──
 
   void _push(Widget screen) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
@@ -272,6 +225,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       builder: (d) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('تسجيل الخروج'),
           content: const Text('هل أنت متأكد أنك تريد تسجيل الخروج؟'),
           actions: [
@@ -302,7 +256,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       builder: (d) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          title: const Text('حذف الحساب'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(children: const [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFE5392B), size: 22),
+            SizedBox(width: 8),
+            Text('حذف الحساب'),
+          ]),
           content: const Text('هذا الإجراء لا رجعة فيه. سيتم حذف جميع بياناتك نهائياً. هل أنت متأكد؟'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('إلغاء')),
@@ -324,11 +283,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 }
 
 // ═══════════════════════════════════════════════
-//  الترويسة الثابتة
+//  الترويسة
 // ═══════════════════════════════════════════════
 
-class _ProfileHeader extends ConsumerWidget {
-  const _ProfileHeader({required this.loggedIn});
+class _Header extends ConsumerWidget {
+  const _Header({required this.loggedIn});
   final bool loggedIn;
 
   @override
@@ -336,10 +295,10 @@ class _ProfileHeader extends ConsumerWidget {
     final unread = loggedIn ? ref.watch(_unreadProvider).valueOrNull ?? 0 : 0;
     return SafeArea(
       bottom: false,
-      child: Padding(
+      child: Container(
+        color: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(children: [
-          // جرس الإشعارات
           Stack(clipBehavior: Clip.none, children: [
             IconButton(
               onPressed: !loggedIn
@@ -347,7 +306,7 @@ class _ProfileHeader extends ConsumerWidget {
                   : () => Navigator.of(context)
                       .push(MaterialPageRoute(builder: (_) => const NotificationsScreen()))
                       .then((_) => ref.invalidate(_unreadProvider)),
-              icon: const Icon(Icons.notifications_none_rounded, size: 26, color: Colors.white),
+              icon: const Icon(Icons.notifications_none_rounded, size: 26, color: Color(0xFF1A1A2E)),
             ),
             if (unread > 0)
               Positioned(
@@ -372,9 +331,9 @@ class _ProfileHeader extends ConsumerWidget {
               ),
           ]),
           const Spacer(),
-          Text('حسابي', style: AppText.headingM(Colors.white)),
+          Text('حسابي', style: AppText.headingM(const Color(0xFF1A1A2E))),
           const Spacer(),
-          const SizedBox(width: 48), // موازنة
+          const SizedBox(width: 48),
         ]),
       ),
     );
@@ -398,13 +357,6 @@ class _UserCard extends StatelessWidget {
   final String email;
   final Map<String, dynamic> profile;
 
-  static String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts.first.characters.first;
-    return '${parts.first.characters.first}${parts.last.characters.first}';
-  }
-
   static String formatAccount(String raw) {
     final d = raw.replaceAll(RegExp(r'[\s\-]'), '');
     if (d.length != 16) return raw;
@@ -418,133 +370,121 @@ class _UserCard extends StatelessWidget {
     final kyc = '${profile['kycStatus'] ?? ''}';
     final accId = '${profile['walletAccountId'] ?? ''}';
     final premium = profile['isPremium'] == true;
-    final hasImage = profile['avatarUrl'] != null && '${profile['avatarUrl']}'.isNotEmpty;
 
-    return Column(children: [
-      // أفاتار مع أيقونة كاميرا
-      Stack(clipBehavior: Clip.none, children: [
-        Container(
-          width: 88,
-          height: 88,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
-          ),
-          child: ClipOval(
-            child: hasImage
-                ? Image.network('${profile['avatarUrl']}', fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _defaultAvatar(name, email))
-                : _defaultAvatar(name, email),
-          ),
-        ),
-        // أيقونة كاميرا
-        Positioned(
-          left: 0,
-          bottom: 0,
-          child: Container(
-            width: 28,
-            height: 28,
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(children: [
+        // أفاتار مع كاميرا
+        Stack(clipBehavior: Clip.none, children: [
+          Container(
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
-              color: const Color(0xFF0AAEBF),
+              color: const Color(0xFFE8F4F8),
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
+              border: Border.all(color: const Color(0xFFD6EAF0), width: 2),
             ),
-            child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
+            child: const Icon(Icons.person_rounded, size: 40, color: Color(0xFF0AAEBF)),
           ),
-        ),
-        // شارة التوثيق
-        if (loggedIn && !isVendor)
           Positioned(
-            right: 0,
-            bottom: 0,
+            left: -2,
+            bottom: -2,
             child: Container(
-              width: 24,
-              height: 24,
+              width: 28,
+              height: 28,
               decoration: BoxDecoration(
-                color: kyc == 'APPROVED'
-                    ? const Color(0xFF4CAF50)
-                    : kyc == 'REJECTED'
-                        ? const Color(0xFFE5392B)
-                        : const Color(0xFFFFA726),
+                color: const Color(0xFF0AAEBF),
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
               ),
-              child: Icon(
-                kyc == 'APPROVED'
-                    ? Icons.check_rounded
-                    : kyc == 'REJECTED'
-                        ? Icons.close_rounded
-                        : Icons.hourglass_top_rounded,
-                size: 14,
-                color: Colors.white,
-              ),
+              child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
             ),
           ),
+          if (loggedIn && !isVendor)
+            Positioned(
+              right: -2,
+              bottom: -2,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: kyc == 'APPROVED'
+                      ? const Color(0xFF4CAF50)
+                      : kyc == 'REJECTED'
+                          ? const Color(0xFFE5392B)
+                          : const Color(0xFFFFA726),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: Icon(
+                  kyc == 'APPROVED'
+                      ? Icons.check_rounded
+                      : kyc == 'REJECTED'
+                          ? Icons.close_rounded
+                          : Icons.hourglass_top_rounded,
+                  size: 14,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+        ]),
+        const SizedBox(height: 12),
+
+        Text(
+          !loggedIn
+              ? 'زائر'
+              : name.isNotEmpty
+                  ? name
+                  : (email.isEmpty ? 'حسابي' : email),
+          style: AppText.headingM(const Color(0xFF1A1A2E)),
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 6),
+
+        if (loggedIn && !isVendor && accId.isNotEmpty)
+          InkWell(
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: accId));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('تم نسخ رقم الحساب'), duration: Duration(seconds: 1)),
+              );
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F6FA),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text(
+                  formatAccount(accId),
+                  textDirection: TextDirection.ltr,
+                  style: AppText.en(const Color(0xFF4A6B6F), size: 14, weight: FontWeight.w600),
+                ),
+                const SizedBox(width: 6),
+                const Icon(Icons.copy_rounded, size: 14, color: Color(0xFF8AA9AD)),
+              ]),
+            ),
+          )
+        else if (phone.isNotEmpty)
+          Text(phone, textDirection: TextDirection.ltr, style: AppText.caption(const Color(0xFF8AA9AD))),
+
+        const SizedBox(height: 8),
+
+        if (loggedIn) _AccountBadge(isVendor: isVendor, premium: premium, kyc: kyc),
       ]),
-      const SizedBox(height: AppSpacing.s12),
-
-      // الاسم
-      Text(
-        !loggedIn
-            ? 'زائر'
-            : name.isNotEmpty
-                ? name
-                : (email.isEmpty ? 'حسابي' : email),
-        style: AppText.headingM(Colors.white),
-        textAlign: TextAlign.center,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      const SizedBox(height: 6),
-
-      // رقم الحساب
-      if (loggedIn && !isVendor && accId.isNotEmpty)
-        InkWell(
-          onTap: () {
-            Clipboard.setData(ClipboardData(text: accId));
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تم نسخ رقم الحساب'), duration: Duration(seconds: 1)),
-            );
-          },
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text(
-                formatAccount(accId),
-                textDirection: TextDirection.ltr,
-                style: AppText.en(Colors.white.withOpacity(0.9), size: 14, weight: FontWeight.w600),
-              ),
-              const SizedBox(width: 6),
-              Icon(Icons.copy_rounded, size: 14, color: Colors.white.withOpacity(0.7)),
-            ]),
-          ),
-        )
-      else if (phone.isNotEmpty)
-        Text(phone, textDirection: TextDirection.ltr, style: AppText.caption(Colors.white.withOpacity(0.8))),
-
-      const SizedBox(height: 8),
-
-      // شارة نوع الحساب
-      if (loggedIn) _AccountBadge(isVendor: isVendor, premium: premium, kyc: kyc),
-    ]);
-  }
-
-  Widget _defaultAvatar(String name, String email) {
-    final initials = _initials(name.isNotEmpty ? name : email);
-    final showInitials = loggedIn && initials != '?';
-    return Center(
-      child: showInitials
-          ? Text(initials, style: AppText.headingL(Colors.white))
-          : const Icon(Icons.person_rounded, size: 40, color: Colors.white),
     );
   }
-
 }
 
 class _AccountBadge extends StatelessWidget {
@@ -556,16 +496,19 @@ class _AccountBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String label;
-    final Color bgColor;
+    final Color bg, fg;
     if (isVendor) {
       label = 'حساب تجاري';
-      bgColor = const Color(0xFFFFA726);
+      bg = const Color(0xFFFFA726).withOpacity(0.1);
+      fg = const Color(0xFFFFA726);
     } else if (premium) {
       label = 'حساب مميز';
-      bgColor = const Color(0xFFFFD54F);
+      bg = const Color(0xFFFFD54F).withOpacity(0.15);
+      fg = const Color(0xFFF9A825);
     } else {
       label = 'حساب عادي';
-      bgColor = Colors.white.withOpacity(0.2);
+      bg = const Color(0xFF0AAEBF).withOpacity(0.08);
+      fg = const Color(0xFF0AAEBF);
     }
     return Wrap(
       spacing: 6,
@@ -573,13 +516,13 @@ class _AccountBadge extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(20)),
-          child: Text(label, style: AppText.caption(Colors.white)),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+          child: Text(label, style: TextStyle(fontSize: 12, color: fg, fontWeight: FontWeight.w600)),
         ),
         if (!isVendor)
           Text(
             kyc == 'APPROVED' ? 'موثق' : kyc == 'REJECTED' ? 'مرفوض' : 'قيد المراجعة',
-            style: AppText.caption(Colors.white.withOpacity(0.7)),
+            style: AppText.caption(const Color(0xFF8AA9AD)),
           ),
       ],
     );
@@ -587,53 +530,18 @@ class _AccountBadge extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════
-//  البطاقات المجمّعة
+//  صندوق مستقل
 // ═══════════════════════════════════════════════
 
-class _GroupedCard extends StatelessWidget {
-  const _GroupedCard({required this.title, required this.children});
-  final String title;
-  final List<Widget> children;
+class _StandaloneCard extends StatelessWidget {
+  const _StandaloneCard({
+    required this.icon,
+    required this.title,
+    this.trailing,
+    this.badge,
+    required this.onTap,
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(right: 4, bottom: 8),
-          child: Text(title, style: AppText.bodyM(const Color(0xFF4A6B6F))),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Column(children: [
-              for (var i = 0; i < children.length; i++) ...[
-                children[i],
-                if (i < children.length - 1)
-                  Divider(height: 1, color: const Color(0xFFD6EAF0), indent: 52),
-              ],
-            ]),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════
-//  عنصر القائمة
-// ═══════════════════════════════════════════════
-
-class _MenuTile extends StatelessWidget {
-  const _MenuTile({required this.icon, required this.title, this.trailing, this.badge, required this.onTap});
   final IconData icon;
   final String title;
   final String? trailing;
@@ -642,33 +550,51 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(children: [
-            Icon(icon, color: const Color(0xFF0AAEBF), size: 22),
-            const SizedBox(width: 14),
-            Expanded(child: Text(title, style: AppText.bodyL(const Color(0xFF0A2E33)))),
-            if (badge != null) ...[
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: _badgeColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFF0AAEBF).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text(badge!, style: TextStyle(fontSize: 11, color: _badgeColor, fontWeight: FontWeight.w600)),
+                child: Icon(icon, size: 20, color: const Color(0xFF0AAEBF)),
               ),
-              const SizedBox(width: 8),
-            ],
-            if (trailing != null) ...[
-              Text(trailing!, style: AppText.bodyM(const Color(0xFF8AA9AD))),
-              const SizedBox(width: 4),
-            ],
-            const Icon(Icons.chevron_left_rounded, color: Color(0xFF8AA9AD), size: 22),
-          ]),
+              const SizedBox(width: 14),
+              Expanded(child: Text(title, style: AppText.bodyL(const Color(0xFF1A1A2E)))),
+              if (badge != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _badgeColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(badge!, style: TextStyle(fontSize: 11, color: _badgeColor, fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 8),
+              ],
+              if (trailing != null) ...[
+                Text(trailing!, style: AppText.bodyM(const Color(0xFF8AA9AD))),
+                const SizedBox(width: 4),
+              ],
+              const Icon(Icons.chevron_left_rounded, color: Color(0xFFCCCCCC), size: 22),
+            ]),
+          ),
         ),
       ),
     );
@@ -691,30 +617,21 @@ class _KycBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = '${profile['kycStatus'] ?? ''}';
-    if (status == 'APPROVED' || status.isEmpty) return const SizedBox.shrink();
-    final rejected = status == 'REJECTED';
     final note = '${profile['kycNote'] ?? ''}';
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFFA726).withOpacity(0.06),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: (rejected ? const Color(0xFFE5392B) : const Color(0xFFFFA726)).withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFFFFA726).withOpacity(0.2)),
       ),
       child: Row(children: [
-        Icon(
-          rejected ? Icons.error_outline_rounded : Icons.hourglass_top_rounded,
-          size: 20,
-          color: rejected ? const Color(0xFFE5392B) : const Color(0xFFFFA726),
-        ),
+        const Icon(Icons.hourglass_top_rounded, size: 20, color: Color(0xFFFFA726)),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
-            rejected
-                ? (note.isNotEmpty ? 'تم رفض التوثيق: $note' : 'تم رفض التوثيق — راجع الدعم')
-                : 'حسابك قيد مراجعة التوثيق — المحفظة تتفعل بعد الموافقة',
-            style: AppText.bodyM(rejected ? const Color(0xFFE5392B) : const Color(0xFF0A2E33)),
+            'حسابك قيد مراجعة التوثيق — المحفظة تتفعل بعد الموافقة',
+            style: AppText.bodyM(const Color(0xFF1A1A2E)),
           ),
         ),
       ]),
@@ -723,7 +640,7 @@ class _KycBanner extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════
-//  الأزرار
+//  أزرار الزائر
 // ═══════════════════════════════════════════════
 
 class _PrimaryButton extends StatelessWidget {
@@ -736,9 +653,9 @@ class _PrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF0AAEBF), Color(0xFF088E9C)]),
+        color: const Color(0xFF0AAEBF),
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: const Color(0xFF0AAEBF).withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: const Color(0xFF0AAEBF).withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Material(
         color: Colors.transparent,
@@ -759,41 +676,8 @@ class _PrimaryButton extends StatelessWidget {
   }
 }
 
-class _GhostButton extends StatelessWidget {
-  const _GhostButton({required this.label, required this.icon, required this.onTap});
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.4)),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(icon, size: 20, color: Colors.white),
-              const SizedBox(width: 8),
-              Text(label, style: AppText.button(Colors.white)),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DangerButton extends StatelessWidget {
-  const _DangerButton({required this.label, required this.icon, required this.onTap});
+class _SecondaryButton extends StatelessWidget {
+  const _SecondaryButton({required this.label, required this.icon, required this.onTap});
   final String label;
   final IconData icon;
   final VoidCallback onTap;
@@ -804,7 +688,7 @@ class _DangerButton extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE5392B).withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFFD6EAF0)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -814,9 +698,9 @@ class _DangerButton extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(icon, size: 20, color: const Color(0xFFE5392B)),
+              Icon(icon, size: 20, color: const Color(0xFF0AAEBF)),
               const SizedBox(width: 8),
-              Text(label, style: AppText.button(const Color(0xFFE5392B))),
+              Text(label, style: AppText.button(const Color(0xFF0AAEBF))),
             ]),
           ),
         ),
@@ -825,18 +709,89 @@ class _DangerButton extends StatelessWidget {
   }
 }
 
-class _DangerLink extends StatelessWidget {
-  const _DangerLink({required this.label, required this.onTap});
-  final String label;
+// ═══════════════════════════════════════════════
+//  إجراءات تدميرية
+// ═══════════════════════════════════════════════
+
+class _LogoutCard extends StatelessWidget {
+  const _LogoutCard({required this.onTap});
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: TextButton(
-        onPressed: onTap,
-        style: TextButton.styleFrom(foregroundColor: const Color(0xFFE5392B).withOpacity(0.7)),
-        child: Text(label, style: const TextStyle(fontSize: 13, decoration: TextDecoration.underline)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5392B).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.logout_rounded, size: 20, color: Color(0xFFE5392B)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Text('تسجيل الخروج', style: AppText.bodyL(const Color(0xFFE5392B)))),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DeleteAccountCard extends StatelessWidget {
+  const _DeleteAccountCard({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5392B).withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5392B).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.delete_outline_rounded, size: 20, color: Color(0xFFE5392B)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Text('حذف الحساب', style: AppText.bodyL(const Color(0xFFE5392B)))),
+              const Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFE5392B)),
+            ]),
+          ),
+        ),
       ),
     );
   }
@@ -865,13 +820,11 @@ final _meProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async
 });
 
 // ═══════════════════════════════════════════════
-//  شاشات فرعية (Security, Vendor)
+//  شاشات فرعية
 // ═══════════════════════════════════════════════
 
-/// الأمان — تغيير رمز حماية المحفظة.
 class SecurityScreen extends ConsumerStatefulWidget {
   const SecurityScreen({super.key});
-
   @override
   ConsumerState<SecurityScreen> createState() => _SecurityScreenState();
 }
@@ -910,9 +863,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
       });
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تغيير رمز الحماية بنجاح')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تغيير رمز الحماية بنجاح')));
     } on ApiException catch (e) {
       setState(() => _error = e.message.contains('الحالي') ? 'رمز الحماية الحالي غير صحيح' : e.message);
     } catch (_) {
@@ -928,14 +879,12 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: c.background,
+        backgroundColor: const Color(0xFFF5F6FA),
         appBar: AppBar(title: const Text('الأمان')),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text('رمز الحماية يُستخدم لتأكيد عمليات المحفظة.', style: AppText.bodyM(c.textSecondary)),
-            const SizedBox(height: 4),
-            Text('إن لم تكن قد عيّنت رمزاً من قبل، اترك حقل الحالي فارغاً.', style: AppText.caption(c.textMuted)),
             const SizedBox(height: 16),
             _pinField(_current, 'رمز الحماية الحالي (اختياري)', _o1, () => setState(() => _o1 = !_o1)),
             const SizedBox(height: 12),
@@ -979,31 +928,24 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
   }
 }
 
-/// شاشة متجري.
 class MyVendorScreen extends ConsumerWidget {
   const MyVendorScreen({super.key});
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.colors;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: c.background,
+        backgroundColor: const Color(0xFFF5F6FA),
         appBar: AppBar(title: const Text('متجري')),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.storefront_rounded, size: 64, color: c.primary),
+              const Icon(Icons.storefront_rounded, size: 64, color: Color(0xFF0AAEBF)),
               const SizedBox(height: 16),
-              Text('لوحة البائع الكاملة', style: AppText.headingM(c.textPrimary)),
+              Text('لوحة البائع الكاملة', style: AppText.headingM(const Color(0xFF1A1A2E))),
               const SizedBox(height: 8),
-              Text(
-                'أدر متجرك وخدماتك وحجوزاتك من لوحة البائع على الويب.',
-                style: AppText.bodyM(c.textSecondary),
-                textAlign: TextAlign.center,
-              ),
+              Text('أدر متجرك من لوحة البائع على الويب.', style: AppText.bodyM(const Color(0xFF8AA9AD)), textAlign: TextAlign.center),
             ]),
           ),
         ),
