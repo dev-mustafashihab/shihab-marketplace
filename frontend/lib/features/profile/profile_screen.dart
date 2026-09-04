@@ -15,7 +15,7 @@ import '../favorites/favorites_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../transfers/transfers_screen.dart';
 
-/// حسابي — خلفية Gradient + كل عنصر بطاقة مستقلة (RTL كامل).
+/// حسابي — خلفية Gradient + أقسام منظمة + هيدر ثابت (RTL كامل).
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -45,127 +45,241 @@ class ProfileScreen extends ConsumerWidget {
             stops: const [0.0, 0.35, 0.6],
           ),
         ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screenH,
-              AppSpacing.s12,
-              AppSpacing.screenH,
-              32,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // هيدر: جرس + عنوان + إعدادات
-                _ProfileHeader(loggedIn: loggedIn),
-                const SizedBox(height: AppSpacing.s20),
+        child: Column(children: [
+          // هيدر ثابت لا يتحرك
+          _ProfileHeader(loggedIn: loggedIn),
 
-                // بطاقة المستخدم — على الخلفية المتدرجة
-                _UserInfoCard(
-                  loggedIn: loggedIn,
-                  isVendor: isVendor,
-                  email: email,
-                  profile: profile,
-                ),
-
-                // تنبيه التوثيق
-                if (loggedIn && !isVendor) ...[
-                  const SizedBox(height: AppSpacing.s12),
-                  _KycBanner(profile: profile),
-                ],
-
-                // أزرار الدخول للزوار
-                if (!loggedIn) ...[
+          // المحتوى القابل للتمرير
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screenH,
+                0,
+                AppSpacing.screenH,
+                32,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                   const SizedBox(height: AppSpacing.s16),
-                  _GradientButton(
-                    label: 'تسجيل الدخول',
-                    icon: Icons.login_rounded,
-                    onTap: () => _push(context, const LoginScreen()),
-                  ),
-                  const SizedBox(height: AppSpacing.s12),
-                  _OutlineButton(
-                    label: 'أنشئ محفظة جديدة',
-                    icon: Icons.account_balance_wallet_outlined,
-                    onTap: () => _push(context, const WalletRegisterScreen()),
-                  ),
-                ],
 
-                const SizedBox(height: AppSpacing.s20),
-
-                // كل عنصر بطاقة مستقلة
-                if (loggedIn) ...[
-                  _MenuTile(
-                    icon: Icons.badge_outlined,
-                    title: 'الملفي الشخصي والتوثيق',
-                    onTap: () => _push(
-                      context,
-                      isVendor ? const RegisterScreen() : const ProfileDetailsScreen(),
-                    ),
+                  // بطاقة المستخدم
+                  _UserInfoCard(
+                    loggedIn: loggedIn,
+                    isVendor: isVendor,
+                    email: email,
+                    profile: profile,
                   ),
-                  if (!isVendor) ...[
-                    const SizedBox(height: 10),
-                    _MenuTile(
-                      icon: Icons.calendar_month_outlined,
-                      title: 'حجوزاتي',
-                      onTap: () => _push(context, const MyBookingsScreen()),
+
+                  // تنبيه التوثيق
+                  if (loggedIn && !isVendor) ...[
+                    const SizedBox(height: AppSpacing.s12),
+                    _KycBanner(profile: profile),
+                  ],
+
+                  // أزرار الدخول للزوار
+                  if (!loggedIn) ...[
+                    const SizedBox(height: AppSpacing.s16),
+                    _GradientButton(
+                      label: 'تسجيل الدخول',
+                      icon: Icons.login_rounded,
+                      onTap: () => _push(context, const LoginScreen()),
                     ),
-                    const SizedBox(height: 10),
-                    _MenuTile(
-                      icon: Icons.receipt_long_outlined,
-                      title: 'سجل عمليات المحفظة',
-                      onTap: () => _push(context, const TransfersScreen()),
+                    const SizedBox(height: AppSpacing.s12),
+                    _OutlineButton(
+                      label: 'أنشئ محفظة جديدة',
+                      icon: Icons.account_balance_wallet_outlined,
+                      onTap: () => _push(context, const WalletRegisterScreen()),
                     ),
                   ],
-                  const SizedBox(height: 10),
-                  _MenuTile(
-                    icon: Icons.favorite_border,
-                    title: 'المفضلة',
-                    onTap: () => _push(context, const FavoritesScreen()),
-                  ),
-                  const SizedBox(height: 10),
-                  _MenuTile(
-                    icon: Icons.lock_outline_rounded,
-                    title: 'الأمان وتغيير رمز الـ PIN',
-                    onTap: () => _push(context, const SecurityScreen()),
-                  ),
-                  if (isVendor) ...[
-                    const SizedBox(height: 10),
-                    _MenuTile(
-                      icon: Icons.storefront_rounded,
-                      title: 'متجري (حساب تجاري)',
-                      onTap: () => _push(context, const MyVendorScreen()),
-                    ),
-                  ],
-                ] else ...[
-                  _MenuTile(
-                    icon: Icons.favorite_border,
-                    title: 'المفضلة',
-                    onTap: () => _push(context, const FavoritesScreen()),
-                  ),
-                ],
 
-                // خروج
-                if (loggedIn) ...[
-                  const SizedBox(height: AppSpacing.s24),
-                  _LogoutButton(
-                    onTap: () async {
-                      ref.read(sessionTokenProvider.notifier).state = null;
-                      await SessionService.saveToken(null);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('تم تسجيل الخروج'),
-                            duration: Duration(seconds: 1),
+                  if (loggedIn) ...[
+                    const SizedBox(height: AppSpacing.s20),
+
+                    // ── قسم: توثيق الحساب ──
+                    _SectionCard(
+                      title: 'توثيق الحساب',
+                      children: [
+                        _MenuTile(
+                          icon: Icons.badge_outlined,
+                          title: 'الملفي الشخصي والتوثيق',
+                          onTap: () => _push(
+                            context,
+                            isVendor ? const RegisterScreen() : const ProfileDetailsScreen(),
                           ),
-                        );
-                      }
-                    },
-                  ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: AppSpacing.s16),
+
+                    // ── قسم: معلومات الحساب ──
+                    _SectionCard(
+                      title: 'معلومات الحساب',
+                      children: [
+                        _MenuTile(
+                          icon: Icons.person_outline_rounded,
+                          title: 'البيانات الشخصية',
+                          onTap: () => _push(context, const ProfileDetailsScreen()),
+                        ),
+                        if (!isVendor) ...[
+                          _Divider(),
+                          _MenuTile(
+                            icon: Icons.account_balance_wallet_outlined,
+                            title: 'تفاصيل المحفظة',
+                            onTap: () => _push(context, const TransfersScreen()),
+                          ),
+                        ],
+                      ],
+                    ),
+
+                    const SizedBox(height: AppSpacing.s16),
+
+                    // ── قسم: إعدادات الأمان ──
+                    _SectionCard(
+                      title: 'إعدادات الأمان',
+                      children: [
+                        _MenuTile(
+                          icon: Icons.lock_outline_rounded,
+                          title: 'تغيير رمز الـ PIN',
+                          onTap: () => _push(context, const SecurityScreen()),
+                        ),
+                        _Divider(),
+                        _MenuTile(
+                          icon: Icons.security_outlined,
+                          title: 'الأمان وحماية الحساب',
+                          onTap: () => _push(context, const SecurityScreen()),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: AppSpacing.s16),
+
+                    // ── قسم: الأجهزة المرتبطة ──
+                    _SectionCard(
+                      title: 'الاجهزة المرتبطة',
+                      children: [
+                        _MenuTile(
+                          icon: Icons.devices_outlined,
+                          title: 'ادارة الاجهزة',
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: AppSpacing.s16),
+
+                    // ── قسم: الاعدادات ──
+                    _SectionCard(
+                      title: 'الاعدادات',
+                      children: [
+                        _MenuTile(
+                          icon: Icons.language_outlined,
+                          title: 'اللغة',
+                          trailing: 'العربية',
+                          onTap: () {},
+                        ),
+                        _Divider(),
+                        _MenuTile(
+                          icon: Icons.dark_mode_outlined,
+                          title: 'المظهر',
+                          trailing: 'فاتح',
+                          onTap: () {},
+                        ),
+                        _Divider(),
+                        _MenuTile(
+                          icon: Icons.notifications_none_rounded,
+                          title: 'الاشعارات',
+                          onTap: () => _push(context, const NotificationsScreen()),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: AppSpacing.s16),
+
+                    // ── قسم: المفضلة ──
+                    _SectionCard(
+                      title: 'المفضلة',
+                      children: [
+                        _MenuTile(
+                          icon: Icons.favorite_border,
+                          title: 'قائمة المفضلة',
+                          onTap: () => _push(context, const FavoritesScreen()),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: AppSpacing.s16),
+
+                    // ── قسم: حجوزاتي ──
+                    if (!isVendor)
+                      _SectionCard(
+                        title: 'حجوزاتي',
+                        children: [
+                          _MenuTile(
+                            icon: Icons.calendar_month_outlined,
+                            title: 'حجوزاتي',
+                            onTap: () => _push(context, const MyBookingsScreen()),
+                          ),
+                          _Divider(),
+                          _MenuTile(
+                            icon: Icons.receipt_long_outlined,
+                            title: 'سجل عمليات المحفظة',
+                            onTap: () => _push(context, const TransfersScreen()),
+                          ),
+                        ],
+                      ),
+
+                    if (isVendor) ...[
+                      const SizedBox(height: AppSpacing.s16),
+                      _SectionCard(
+                        title: 'التجارة',
+                        children: [
+                          _MenuTile(
+                            icon: Icons.storefront_rounded,
+                            title: 'متجري (حساب تجاري)',
+                            onTap: () => _push(context, const MyVendorScreen()),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ] else ...[
+                    const SizedBox(height: AppSpacing.s16),
+                    _SectionCard(
+                      title: 'العام',
+                      children: [
+                        _MenuTile(
+                          icon: Icons.favorite_border,
+                          title: 'المفضلة',
+                          onTap: () => _push(context, const FavoritesScreen()),
+                        ),
+                      ],
+                    ),
+                  ],
+
+                  // خروج
+                  if (loggedIn) ...[
+                    const SizedBox(height: AppSpacing.s24),
+                    _LogoutButton(
+                      onTap: () async {
+                        ref.read(sessionTokenProvider.notifier).state = null;
+                        await SessionService.saveToken(null);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('تم تسجيل الخروج'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
-        ),
+        ]),
       ),
     );
   }
@@ -175,7 +289,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-// ─────────────────────── الهيدر ───────────────────────
+// ─────────────────────── الهيدر الثابت ───────────────────────
 
 class _ProfileHeader extends ConsumerWidget {
   const _ProfileHeader({required this.loggedIn});
@@ -184,54 +298,60 @@ class _ProfileHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unread = loggedIn ? ref.watch(_unreadProvider).valueOrNull ?? 0 : 0;
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: Row(children: [
-        // جرس يسار + شارة العداد
-        Stack(clipBehavior: Clip.none, children: [
-          IconButton(
-            tooltip: 'الإشعارات',
-            onPressed: !loggedIn
-                ? null
-                : () => Navigator.of(context)
-                    .push(MaterialPageRoute(builder: (_) => const NotificationsScreen()))
-                    .then((_) => ref.invalidate(_unreadProvider)),
-            icon: const Icon(Icons.notifications_none_rounded, size: 26, color: Colors.white),
-          ),
-          if (unread > 0)
-            Positioned(
-              right: 6,
-              top: 6,
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE53935),
-                  borderRadius: BorderRadius.circular(9),
-                  border: Border.all(color: Colors.white, width: 1.5),
-                ),
-                child: Center(
-                  child: Text(
-                    unread > 99 ? '99+' : '$unread',
-                    textDirection: TextDirection.ltr,
-                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Row(children: [
+            // جرس يسار + شارة العداد
+            Stack(clipBehavior: Clip.none, children: [
+              IconButton(
+                tooltip: 'الاشعارات',
+                onPressed: !loggedIn
+                    ? null
+                    : () => Navigator.of(context)
+                        .push(MaterialPageRoute(builder: (_) => const NotificationsScreen()))
+                        .then((_) => ref.invalidate(_unreadProvider)),
+                icon: const Icon(Icons.notifications_none_rounded, size: 26, color: Colors.white),
+              ),
+              if (unread > 0)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE53935),
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: Center(
+                      child: Text(
+                        unread > 99 ? '99+' : '$unread',
+                        textDirection: TextDirection.ltr,
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+            ]),
+            const Spacer(),
+            Text('حسابي', style: AppText.headingM(Colors.white)),
+            const Spacer(),
+            // إعدادات يمين
+            IconButton(
+              tooltip: 'الاعدادات',
+              onPressed: !loggedIn
+                  ? null
+                  : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SecurityScreen())),
+              icon: const Icon(Icons.settings_outlined, size: 26, color: Colors.white),
             ),
-        ]),
-        const Spacer(),
-        Text('حسابي', style: AppText.headingM(Colors.white)),
-        const Spacer(),
-        // إعدادات يمين
-        IconButton(
-          tooltip: 'الأمان',
-          onPressed: !loggedIn
-              ? null
-              : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SecurityScreen())),
-          icon: const Icon(Icons.settings_outlined, size: 26, color: Colors.white),
+          ]),
         ),
-      ]),
+      ),
     );
   }
 }
@@ -258,10 +378,11 @@ class _UserInfoCard extends StatelessWidget {
     return '${parts.first.characters.first}${parts.last.characters.first}';
   }
 
+  /// تنسيق رقم الحساب: مسافة بين كل 4 أرقام
   static String formatAccount(String raw) {
-    final d = raw.replaceAll(RegExp(r'[\s-]'), '');
+    final d = raw.replaceAll(RegExp(r'[\s\-]'), '');
     if (d.length != 16) return raw;
-    return '${d.substring(0, 4)}-${d.substring(4, 8)}-${d.substring(8, 12)}-${d.substring(12)}';
+    return '${d.substring(0, 4)} ${d.substring(4, 8)} ${d.substring(8, 12)} ${d.substring(12)}';
   }
 
   @override
@@ -334,7 +455,7 @@ class _UserInfoCard extends StatelessWidget {
       ),
       const SizedBox(height: 6),
 
-      // رقم الحساب مع نسخ
+      // رقم الحساب مع نسخ — مسافة بين كل 4 أرقام
       if (loggedIn && !isVendor && accId.isNotEmpty)
         InkWell(
           onTap: () {
@@ -354,7 +475,7 @@ class _UserInfoCard extends StatelessWidget {
               Text(
                 formatAccount(accId),
                 textDirection: TextDirection.ltr,
-                style: AppText.en(Colors.white.withOpacity(0.9), size: 13, weight: FontWeight.w600),
+                style: AppText.en(Colors.white.withOpacity(0.9), size: 14, weight: FontWeight.w600),
               ),
               const SizedBox(width: 6),
               Icon(Icons.copy_rounded, size: 14, color: Colors.white.withOpacity(0.7)),
@@ -417,49 +538,80 @@ class _AccountBadge extends StatelessWidget {
   }
 }
 
-// ─────────────────────── بطاقة عنصر قائمة مستقلة ───────────────────────
+// ─────────────────────── بطاقة قسم ───────────────────────
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.children});
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(right: 4, bottom: 8),
+          child: Text(
+            title,
+            style: AppText.bodyM(const Color(0xFF4A6B6F)),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Column(children: children),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────── عنصر قائمة ───────────────────────
 
 class _MenuTile extends StatelessWidget {
-  const _MenuTile({required this.icon, required this.title, required this.onTap});
+  const _MenuTile({required this.icon, required this.title, this.trailing, required this.onTap});
   final IconData icon;
   final String title;
+  final String? trailing;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0AAEBF).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: const Color(0xFF0AAEBF), size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(child: Text(title, style: AppText.bodyL(const Color(0xFF0A2E33)))),
-              const Icon(Icons.chevron_left_rounded, color: Color(0xFF8AA9AD), size: 22),
-            ]),
-          ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(children: [
+            Icon(icon, color: const Color(0xFF0AAEBF), size: 22),
+            const SizedBox(width: 14),
+            Expanded(child: Text(title, style: AppText.bodyL(const Color(0xFF0A2E33)))),
+            if (trailing != null) ...[
+              Text(trailing!, style: AppText.bodyM(const Color(0xFF8AA9AD))),
+              const SizedBox(width: 4),
+            ],
+            const Icon(Icons.chevron_left_rounded, color: Color(0xFF8AA9AD), size: 22),
+          ]),
         ),
       ),
     );
+  }
+}
+
+class _Divider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Divider(height: 1, color: const Color(0xFFD6EAF0), indent: 52);
   }
 }
 
@@ -832,7 +984,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
   }
 }
 
-/// شاشة متجري — تحويل الحساب إلى تجاري.
+/// شاشة متجري.
 class MyVendorScreen extends ConsumerWidget {
   const MyVendorScreen({super.key});
 
