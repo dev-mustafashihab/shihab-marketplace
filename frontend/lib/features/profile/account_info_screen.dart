@@ -9,7 +9,6 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 
 /// معلومات الحساب — ثلاث تبويبات: الحساب، الشخصية، الوصي.
-/// وضع التعديل مع: إلغاء، تتبع dirty، تعطيل الحفظ، نافذة تجاهل.
 class AccountInfoScreen extends ConsumerStatefulWidget {
   const AccountInfoScreen({super.key});
 
@@ -22,10 +21,9 @@ class _AccountInfoScreenState extends ConsumerState<AccountInfoScreen>
   late TabController _tabController;
   bool _editing = false;
 
-  // مفاتيح النماذج لكل تبويب
-  final _accountKey = GlobalKey<_EditableFormState>();
-  final _personalKey = GlobalKey<_EditableFormState>();
-  final _guardianKey = GlobalKey<_EditableFormState>();
+  final _accountKey = GlobalKey<_AccountTabState>();
+  final _personalKey = GlobalKey<_PersonalTabState>();
+  final _guardianKey = GlobalKey<_GuardianTabState>();
 
   @override
   void initState() {
@@ -39,14 +37,12 @@ class _AccountInfoScreenState extends ConsumerState<AccountInfoScreen>
     super.dispose();
   }
 
-  /// هل هناك تعديلات غير محفوظة؟
   bool get _isDirty {
     return (_accountKey.currentState?.isDirty ?? false) ||
         (_personalKey.currentState?.isDirty ?? false) ||
         (_guardianKey.currentState?.isDirty ?? false);
   }
 
-  /// التراجع عن كل التعديلات
   void _discardAll() {
     _accountKey.currentState?.reset();
     _personalKey.currentState?.reset();
@@ -54,54 +50,20 @@ class _AccountInfoScreenState extends ConsumerState<AccountInfoScreen>
     setState(() => _editing = false);
   }
 
-  /// محاولة الإلغاء مع نافذة تأكيد
   Future<void> _tryCancel() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     if (!_isDirty) {
       setState(() => _editing = false);
       return;
     }
-    final discard = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تجاهل التغييرات؟'),
-        content: const Text('لديك تعديلات غير محفوظة. هل تريد تجاهلها؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('متابعة التحرير'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFE5392B)),
-            child: const Text('تجاهل التعديلات'),
-          ),
-        ],
-      ),
-    );
+    final discard = await _showDiscardDialog();
     if (discard == true) _discardAll();
   }
 
-  /// محاولة الرجوع بالنظام
   Future<bool> _onWillPop() async {
     if (!_editing || !_isDirty) return true;
-    final discard = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تجاهل التغييرات؟'),
-        content: const Text('لديك تعديلات غير محفوظة. هل تريد تجاهلها؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('متابعة التحرير'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFE5392B)),
-            child: const Text('تجاهل التعديلات'),
-          ),
-        ],
-      ),
-    );
+    FocusManager.instance.primaryFocus?.unfocus();
+    final discard = await _showDiscardDialog();
     if (discard == true) {
       _discardAll();
       return true;
@@ -109,9 +71,31 @@ class _AccountInfoScreenState extends ConsumerState<AccountInfoScreen>
     return false;
   }
 
-  /// الحفظ
+  Future<bool?> _showDiscardDialog() {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('تجاهل التغييرات؟'),
+          content: const Text('لديك تعديلات غير محفوظة. هل تريد تجاهلها؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('متابعة التحرير'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFFE5392B)),
+              child: const Text('تجاهل التعديلات'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _save() {
-    // TODO: إرسال البيانات للـ API
     setState(() => _editing = false);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('تم حفظ التعديلات')),
@@ -123,83 +107,81 @@ class _AccountInfoScreenState extends ConsumerState<AccountInfoScreen>
     final c = context.colors;
     final meAsync = ref.watch(_meProvider);
 
-    return WillPopScope(
-      onWillPop: _onWillPop,
-      child: Scaffold(
-        backgroundColor: c.background,
-        appBar: AppBar(
-          title: const Text('معلومات الحساب'),
-          leading: _editing
-              ? IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  tooltip: 'إلغاء',
-                  onPressed: _tryCancel,
-                )
-              : null,
-          actions: [
-            if (_editing)
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: TextButton.icon(
-                  onPressed: _isDirty ? _save : null,
-                  icon: const Icon(Icons.check_rounded, size: 18),
-                  label: const Text('حفظ'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: _isDirty ? const Color(0xFF0AAEBF) : const Color(0xFF8AA9AD),
-                    disabledBackgroundColor: const Color(0xFF8AA9AD),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: WillPopScope(
+        onWillPop: _onWillPop,
+        child: Scaffold(
+          backgroundColor: c.background,
+          appBar: AppBar(
+            title: const Text('معلومات الحساب'),
+            leading: _editing
+                ? IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: 'إلغاء',
+                    onPressed: _tryCancel,
+                  )
+                : null,
+            actions: [
+              if (_editing)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: TextButton.icon(
+                    onPressed: _isDirty ? _save : null,
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('حفظ'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: _isDirty ? const Color(0xFF0AAEBF) : const Color(0xFFB0BEC5),
+                      disabledBackgroundColor: const Color(0xFFB0BEC5),
+                      disabledForegroundColor: Colors.white70,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    ),
                   ),
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'تعديل',
+                  onPressed: () => setState(() => _editing = true),
                 ),
-              )
-            else
-              IconButton(
-                icon: const Icon(Icons.edit_outlined),
-                tooltip: 'تعديل',
-                onPressed: () => setState(() => _editing = true),
-              ),
-          ],
-          bottom: TabBar(
-            controller: _tabController,
-            labelColor: c.primary,
-            unselectedLabelColor: c.textMuted,
-            indicatorColor: c.primary,
-            indicatorWeight: 3,
-            labelStyle: AppText.bodyM(c.textPrimary).copyWith(fontWeight: FontWeight.w600),
-            unselectedLabelStyle: AppText.bodyM(c.textMuted),
-            tabs: const [
-              Tab(text: 'الحساب'),
-              Tab(text: 'الشخصية'),
-              Tab(text: 'الوصي'),
             ],
-          ),
-        ),
-        body: meAsync.when(
-          loading: () => Center(child: CircularProgressIndicator(color: c.primary)),
-          error: (_, __) => Center(child: Text('خطأ في التحميل', style: AppText.bodyM(c.error))),
-          data: (me) {
-            final profile = (me['profile'] as Map?)?.cast<String, dynamic>() ?? const {};
-            return TabBarView(
+            bottom: TabBar(
               controller: _tabController,
-              children: [
-                _AccountTab(key: _accountKey, profile: profile, email: '${me['email'] ?? ''}', editing: _editing),
-                _PersonalTab(key: _personalKey, profile: profile, editing: _editing),
-                _GuardianTab(key: _guardianKey, profile: profile, editing: _editing),
+              labelColor: c.primary,
+              unselectedLabelColor: c.textMuted,
+              indicatorColor: c.primary,
+              indicatorWeight: 3,
+              labelStyle: AppText.bodyM(c.textPrimary).copyWith(fontWeight: FontWeight.w600),
+              unselectedLabelStyle: AppText.bodyM(c.textMuted),
+              tabs: const [
+                Tab(text: 'الحساب'),
+                Tab(text: 'الشخصية'),
+                Tab(text: 'الوصي'),
               ],
-            );
-          },
+            ),
+          ),
+          body: meAsync.when(
+            loading: () => Center(child: CircularProgressIndicator(color: c.primary)),
+            error: (_, __) => Center(child: Text('خطأ في التحميل', style: AppText.bodyM(c.error))),
+            data: (me) {
+              final profile = (me['profile'] as Map?)?.cast<String, dynamic>() ?? const {};
+              return TabBarView(
+                controller: _tabController,
+                physics: const ClampingScrollPhysics(),
+                children: [
+                  _AccountTab(key: _accountKey, profile: profile, email: '${me['email'] ?? ''}', editing: _editing),
+                  _PersonalTab(key: _personalKey, profile: profile, editing: _editing),
+                  _GuardianTab(key: _guardianKey, profile: profile, editing: _editing),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
-}
-
-// ─────────────────────── نموذج قابل للتعديل مع تتبع dirty ───────────────────────
-
-abstract class _EditableFormState<T extends StatefulWidget> extends State<T> {
-  bool get isDirty;
-  void reset();
 }
 
 // ─────────────────────── تبويب الحساب ───────────────────────
@@ -214,9 +196,10 @@ class _AccountTab extends StatefulWidget {
   State<_AccountTab> createState() => _AccountTabState();
 }
 
-class _AccountTabState extends _EditableFormState<_AccountTab> {
+class _AccountTabState extends State<_AccountTab> {
   late String _origEmail, _origPhone, _origBio;
   late TextEditingController _emailCtrl, _phoneCtrl, _bioCtrl;
+  bool _dirty = false;
 
   @override
   void initState() {
@@ -227,28 +210,37 @@ class _AccountTabState extends _EditableFormState<_AccountTab> {
     _emailCtrl = TextEditingController(text: _origEmail);
     _phoneCtrl = TextEditingController(text: _origPhone);
     _bioCtrl = TextEditingController(text: _origBio);
+    _emailCtrl.addListener(_checkDirty);
+    _phoneCtrl.addListener(_checkDirty);
+    _bioCtrl.addListener(_checkDirty);
   }
 
   @override
   void dispose() {
+    _emailCtrl.removeListener(_checkDirty);
+    _phoneCtrl.removeListener(_checkDirty);
+    _bioCtrl.removeListener(_checkDirty);
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
     _bioCtrl.dispose();
     super.dispose();
   }
 
-  @override
-  bool get isDirty =>
-      _emailCtrl.text != _origEmail ||
-      _phoneCtrl.text != _origPhone ||
-      _bioCtrl.text != _origBio;
+  void _checkDirty() {
+    final nowDirty = _emailCtrl.text != _origEmail ||
+        _phoneCtrl.text != _origPhone ||
+        _bioCtrl.text != _origBio;
+    if (nowDirty != _dirty) setState(() => _dirty = nowDirty);
+  }
 
-  @override
+  bool get isDirty => _dirty;
+
   void reset() {
     setState(() {
       _emailCtrl.text = _origEmail;
       _phoneCtrl.text = _origPhone;
       _bioCtrl.text = _origBio;
+      _dirty = false;
     });
   }
 
@@ -256,32 +248,30 @@ class _AccountTabState extends _EditableFormState<_AccountTab> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.screenH),
-      child: Column(children: [
-        _InfoCard(children: [
-          _InfoRow(
-            icon: Icons.alternate_email_rounded,
-            label: 'البريد الالكتروني',
-            controller: _emailCtrl,
-            editable: widget.editing,
-            textDirection: TextDirection.ltr,
-            keyboardType: TextInputType.emailAddress,
-          ),
-          _InfoRow(
-            icon: Icons.phone_outlined,
-            label: 'رقم الهاتف',
-            controller: _phoneCtrl,
-            editable: widget.editing,
-            textDirection: TextDirection.ltr,
-            keyboardType: TextInputType.phone,
-          ),
-          _InfoRow(
-            icon: Icons.edit_note_rounded,
-            label: 'البايو',
-            controller: _bioCtrl,
-            editable: widget.editing,
-            maxLines: 3,
-          ),
-        ]),
+      child: _InfoCard(children: [
+        _InfoRow(
+          icon: Icons.alternate_email_rounded,
+          label: 'البريد الالكتروني',
+          controller: _emailCtrl,
+          editable: widget.editing,
+          fieldDirection: TextDirection.ltr,
+          keyboardType: TextInputType.emailAddress,
+        ),
+        _InfoRow(
+          icon: Icons.phone_outlined,
+          label: 'رقم الهاتف',
+          controller: _phoneCtrl,
+          editable: widget.editing,
+          fieldDirection: TextDirection.ltr,
+          keyboardType: TextInputType.phone,
+        ),
+        _InfoRow(
+          icon: Icons.edit_note_rounded,
+          label: 'البايو',
+          controller: _bioCtrl,
+          editable: widget.editing,
+          maxLines: 3,
+        ),
       ]),
     );
   }
@@ -298,42 +288,77 @@ class _PersonalTab extends StatefulWidget {
   State<_PersonalTab> createState() => _PersonalTabState();
 }
 
-class _PersonalTabState extends _EditableFormState<_PersonalTab> {
+class _PersonalTabState extends State<_PersonalTab> {
+  static const _keys = [
+    'fullName', 'fatherName', 'motherName', 'nationalId',
+    'birthDate', 'governorate', 'city', 'address',
+  ];
+  static const _labels = [
+    'الاسم الكامل', 'اسم الاب', 'اسم الام', 'الرقم الوطني',
+    'تاريخ الميلاد', 'المحافظة', 'المدينة', 'العنوان',
+  ];
+  static const _icons = [
+    Icons.person_outline_rounded, Icons.emoji_people_outlined,
+    Icons.emoji_people_outlined, Icons.fingerprint,
+    Icons.cake_outlined, Icons.location_city_outlined,
+    Icons.place_outlined, Icons.home_outlined,
+  ];
+  static const _types = [
+    TextInputType.text, TextInputType.text, TextInputType.text,
+    TextInputType.number, TextInputType.datetime,
+    TextInputType.text, TextInputType.text, TextInputType.text,
+  ];
+  static const _ltrField = [false, false, false, true, true, false, false, false];
+
   late Map<String, String> _orig;
   late Map<String, TextEditingController> _ctrls;
-
-  static const _fields = [
-    ('fullName', 'الاسم الكامل', Icons.person_outline_rounded, TextInputType.text, TextDirection.rtl),
-    ('fatherName', 'اسم الاب', Icons.emoji_people_outlined, TextInputType.text, TextDirection.rtl),
-    ('motherName', 'اسم الام', Icons.emoji_people_outlined, TextInputType.text, TextDirection.rtl),
-    ('nationalId', 'الرقم الوطني', Icons.fingerprint, TextInputType.number, TextDirection.ltr),
-    ('birthDate', 'تاريخ الميلاد', Icons.cake_outlined, TextInputType.text, TextDirection.ltr),
-    ('governorate', 'المحافظة', Icons.location_city_outlined, TextInputType.text, TextDirection.rtl),
-    ('city', 'المدينة', Icons.place_outlined, TextInputType.text, TextDirection.rtl),
-    ('address', 'العنوان', Icons.home_outlined, TextInputType.text, TextDirection.rtl),
-  ];
+  bool _dirty = false;
 
   @override
   void initState() {
     super.initState();
-    _orig = {for (final f in _fields) f.$1: '${widget.profile[f.$1] ?? ''}'};
-    _ctrls = {for (final f in _fields) f.$1: TextEditingController(text: _orig[f.$1])};
+    _orig = {};
+    _ctrls = {};
+    for (final k in _keys) {
+      String raw = '${widget.profile[k] ?? ''}';
+      if (k == 'birthDate') raw = _formatDate(raw);
+      _orig[k] = raw;
+      _ctrls[k] = TextEditingController(text: raw);
+      _ctrls[k]!.addListener(_checkDirty);
+    }
   }
 
   @override
   void dispose() {
-    for (final c in _ctrls.values) c.dispose();
+    for (final c in _ctrls.values) {
+      c.removeListener(_checkDirty);
+      c.dispose();
+    }
     super.dispose();
   }
 
-  @override
-  bool get isDirty => _ctrls.entries.any((e) => e.value.text != _orig[e.key]);
+  void _checkDirty() {
+    final nowDirty = _ctrls.entries.any((e) => e.value.text != _orig[e.key]);
+    if (nowDirty != _dirty) setState(() => _dirty = nowDirty);
+  }
 
-  @override
+  bool get isDirty => _dirty;
+
   void reset() {
     setState(() {
       for (final e in _ctrls.entries) e.value.text = _orig[e.key]!;
+      _dirty = false;
     });
+  }
+
+  static String _formatDate(String raw) {
+    if (raw.isEmpty) return '';
+    try {
+      final d = DateTime.parse(raw);
+      return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+    } catch (_) {
+      return raw;
+    }
   }
 
   String _mask(String v) {
@@ -345,22 +370,20 @@ class _PersonalTabState extends _EditableFormState<_PersonalTab> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.screenH),
-      child: Column(children: [
-        _InfoCard(children: [
-          for (var i = 0; i < _fields.length; i++) ...[
-            _InfoRow(
-              icon: _fields[i].$3,
-              label: _fields[i].$2,
-              controller: _ctrls[_fields[i].$1]!,
-              editable: widget.editing,
-              keyboardType: _fields[i].$4,
-              textDirection: _fields[i].$5,
-              masked: _fields[i].$1 == 'nationalId' && !widget.editing ? _mask : null,
-            ),
-            if (i < _fields.length - 1)
-              Divider(height: 1, color: const Color(0xFFD6EAF0), indent: 52),
-          ],
-        ]),
+      child: _InfoCard(children: [
+        for (var i = 0; i < _keys.length; i++) ...[
+          _InfoRow(
+            icon: _icons[i],
+            label: _labels[i],
+            controller: _ctrls[_keys[i]]!,
+            editable: widget.editing,
+            keyboardType: _types[i],
+            fieldDirection: _ltrField[i] ? TextDirection.ltr : TextDirection.rtl,
+            masked: _keys[i] == 'nationalId' && !widget.editing ? _mask : null,
+          ),
+          if (i < _keys.length - 1)
+            Divider(height: 1, color: const Color(0xFFD6EAF0), indent: 52),
+        ],
       ]),
     );
   }
@@ -377,37 +400,51 @@ class _GuardianTab extends StatefulWidget {
   State<_GuardianTab> createState() => _GuardianTabState();
 }
 
-class _GuardianTabState extends _EditableFormState<_GuardianTab> {
+class _GuardianTabState extends State<_GuardianTab> {
+  static const _keys = ['guardianName', 'guardianRelation', 'guardianPhone', 'guardianAddress'];
+  static const _labels = ['اسم الوصي', 'صلة القرابة', 'هاتف الوصي', 'عنوان الوصي'];
+  static const _icons = [
+    Icons.person_outline_rounded, Icons.family_restroom_outlined,
+    Icons.phone_outlined, Icons.home_outlined,
+  ];
+  static const _types = [
+    TextInputType.text, TextInputType.text,
+    TextInputType.phone, TextInputType.text,
+  ];
+  static const _ltrField = [false, false, true, false];
+
   late Map<String, String> _orig;
   late Map<String, TextEditingController> _ctrls;
-
-  static const _fields = [
-    ('guardianName', 'اسم الوصي', Icons.person_outline_rounded, TextInputType.text, TextDirection.rtl),
-    ('guardianRelation', 'صلة القرابة', Icons.family_restroom_outlined, TextInputType.text, TextDirection.rtl),
-    ('guardianPhone', 'هاتف الوصي', Icons.phone_outlined, TextInputType.phone, TextDirection.ltr),
-    ('guardianAddress', 'عنوان الوصي', Icons.home_outlined, TextInputType.text, TextDirection.rtl),
-  ];
+  bool _dirty = false;
 
   @override
   void initState() {
     super.initState();
-    _orig = {for (final f in _fields) f.$1: '${widget.profile[f.$1] ?? ''}'};
-    _ctrls = {for (final f in _fields) f.$1: TextEditingController(text: _orig[f.$1])};
+    _orig = {for (final k in _keys) k: '${widget.profile[k] ?? ''}'};
+    _ctrls = {for (final k in _keys) k: TextEditingController(text: _orig[k])};
+    for (final c in _ctrls.values) c.addListener(_checkDirty);
   }
 
   @override
   void dispose() {
-    for (final c in _ctrls.values) c.dispose();
+    for (final c in _ctrls.values) {
+      c.removeListener(_checkDirty);
+      c.dispose();
+    }
     super.dispose();
   }
 
-  @override
-  bool get isDirty => _ctrls.entries.any((e) => e.value.text != _orig[e.key]);
+  void _checkDirty() {
+    final nowDirty = _ctrls.entries.any((e) => e.value.text != _orig[e.key]);
+    if (nowDirty != _dirty) setState(() => _dirty = nowDirty);
+  }
 
-  @override
+  bool get isDirty => _dirty;
+
   void reset() {
     setState(() {
       for (final e in _ctrls.entries) e.value.text = _orig[e.key]!;
+      _dirty = false;
     });
   }
 
@@ -417,16 +454,16 @@ class _GuardianTabState extends _EditableFormState<_GuardianTab> {
       padding: const EdgeInsets.all(AppSpacing.screenH),
       child: Column(children: [
         _InfoCard(children: [
-          for (var i = 0; i < _fields.length; i++) ...[
+          for (var i = 0; i < _keys.length; i++) ...[
             _InfoRow(
-              icon: _fields[i].$3,
-              label: _fields[i].$2,
-              controller: _ctrls[_fields[i].$1]!,
+              icon: _icons[i],
+              label: _labels[i],
+              controller: _ctrls[_keys[i]]!,
               editable: widget.editing,
-              keyboardType: _fields[i].$4,
-              textDirection: _fields[i].$5,
+              keyboardType: _types[i],
+              fieldDirection: _ltrField[i] ? TextDirection.ltr : TextDirection.rtl,
             ),
-            if (i < _fields.length - 1)
+            if (i < _keys.length - 1)
               Divider(height: 1, color: const Color(0xFFD6EAF0), indent: 52),
           ],
         ]),
@@ -438,13 +475,13 @@ class _GuardianTabState extends _EditableFormState<_GuardianTab> {
               color: const Color(0xFFFFA726).withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(children: [
-              const Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFFFFA726)),
-              const SizedBox(width: 8),
+            child: const Row(children: [
+              Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFFFFA726)),
+              SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'بيانات الوصي مطلوبة للحسابات تحت سن 18.',
-                  style: AppText.caption(const Color(0xFFFFA726)),
+                  style: TextStyle(fontSize: 12, color: Color(0xFFFFA726)),
                 ),
               ),
             ]),
@@ -486,7 +523,7 @@ class _InfoRow extends StatelessWidget {
     required this.controller,
     required this.editable,
     this.keyboardType = TextInputType.text,
-    this.textDirection = TextDirection.rtl,
+    this.fieldDirection = TextDirection.rtl,
     this.maxLines = 1,
     this.masked,
   });
@@ -496,7 +533,7 @@ class _InfoRow extends StatelessWidget {
   final TextEditingController controller;
   final bool editable;
   final TextInputType keyboardType;
-  final TextDirection textDirection;
+  final TextDirection fieldDirection;
   final int maxLines;
   final String Function(String)? masked;
 
@@ -508,7 +545,7 @@ class _InfoRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // أيقونة في مربع صغير
+        // أيقونة
         Container(
           width: 36,
           height: 36,
@@ -521,15 +558,15 @@ class _InfoRow extends StatelessWidget {
         const SizedBox(width: 12),
         // الحقل
         Expanded(
-          child: Directionality(
-            textDirection: textDirection,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: AppText.caption(c.textMuted)),
-                const SizedBox(height: 4),
-                editable
-                    ? TextFormField(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: AppText.caption(c.textMuted)),
+              const SizedBox(height: 4),
+              editable
+                  ? Directionality(
+                      textDirection: fieldDirection,
+                      child: TextFormField(
                         controller: controller,
                         maxLines: maxLines,
                         keyboardType: keyboardType,
@@ -548,15 +585,15 @@ class _InfoRow extends StatelessWidget {
                             borderSide: const BorderSide(color: Color(0xFF0AAEBF), width: 1.5),
                           ),
                         ),
-                      )
-                    : Text(
-                        displayValue.isNotEmpty ? displayValue : '—',
-                        style: AppText.bodyL(c.textPrimary),
-                        maxLines: maxLines,
-                        overflow: TextOverflow.ellipsis,
                       ),
-              ],
-            ),
+                    )
+                  : Text(
+                      displayValue.isNotEmpty ? displayValue : '—',
+                      style: AppText.bodyL(c.textPrimary),
+                      maxLines: maxLines,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+            ],
           ),
         ),
       ]),
